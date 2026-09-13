@@ -1,0 +1,138 @@
+<app-page-header title="Academics" subtitle="Weekly timetable and subject syllabus tracker" />
+
+@if (loading) {
+  <div class="flex items-center justify-center py-20">
+    <mat-spinner diameter="40" />
+  </div>
+} @else {
+  <mat-card class="mb-6 !rounded-xl">
+    <mat-card-header>
+      <mat-card-title class="!text-base">Weekly timetable</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      @if (slots.length === 0) {
+        <app-empty-state icon="calendar_month" title="No timetable published" message="Your timetable isn't available yet." />
+      } @else {
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          @for (day of days; track day) {
+            <div class="rounded-xl border border-gray-200 p-3">
+              <h3 class="mb-2 text-sm font-semibold text-gray-700">{{ dayNames[day] }}</h3>
+              @for (slot of slotsFor(day); track slot.id) {
+                <div class="mb-2 rounded-lg bg-blue-50 px-3 py-2">
+                  <p class="text-sm font-medium text-blue-800">
+                    {{ slot.startTime }} – {{ slot.endTime }}
+                  </p>
+                  <p class="text-xs text-blue-600">{{ slot.subject?.code }} {{ slot.room ? '· ' + slot.room : '' }}</p>
+                </div>
+              } @empty {
+                <p class="text-xs text-gray-400">No classes</p>
+              }
+            </div>
+          }
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="mb-6 !rounded-xl">
+    <mat-card-header>
+      <mat-card-title class="!text-base">Exam schedule</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      @if (exams.length === 0) {
+        <app-empty-state
+          icon="event_available"
+          title="No exams scheduled"
+          message="Exams for your course and semester haven't been published yet."
+        />
+      } @else {
+        <div class="overflow-x-auto">
+          <table mat-table [dataSource]="exams" class="w-full">
+            <ng-container matColumnDef="subject">
+              <th mat-header-cell *matHeaderCellDef>Subject</th>
+              <td mat-cell *matCellDef="let e">
+                <span class="font-medium">{{ e.subject?.code }}</span>
+                <span class="ml-2 text-sm text-gray-500">{{ e.subject?.name }}</span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="exam">
+              <th mat-header-cell *matHeaderCellDef>Exam</th>
+              <td mat-cell *matCellDef="let e">{{ e.name }}</td>
+            </ng-container>
+            <ng-container matColumnDef="type">
+              <th mat-header-cell *matHeaderCellDef>Type</th>
+              <td mat-cell *matCellDef="let e">
+                <mat-chip
+                  class="!text-xs"
+                  [class]="e.type === 'INTERNAL' ? '!bg-blue-100 !text-blue-700' : '!bg-purple-100 !text-purple-700'"
+                >
+                  {{ e.type }}
+                </mat-chip>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let e">{{ e.date | date: 'mediumDate' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let e">
+                <mat-chip
+                  class="!text-xs"
+                  [class]="isUpcoming(e) ? '!bg-emerald-100 !text-emerald-700' : '!bg-gray-100 !text-gray-600'"
+                >
+                  {{ isUpcoming(e) ? 'Upcoming' : 'Completed' }}
+                </mat-chip>
+              </td>
+            </ng-container>
+            <tr
+              mat-header-row
+              *matHeaderRowDef="['subject', 'exam', 'type', 'date', 'status']"
+            ></tr>
+            <tr mat-row *matRowDef="let row; columns: ['subject', 'exam', 'type', 'date', 'status']"></tr>
+          </table>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="!rounded-xl">
+    <mat-card-header>
+      <mat-card-title class="!text-base">Subject syllabus</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      @if (subjects.length === 0) {
+        <app-empty-state icon="menu_book" title="No subjects" message="Subjects for your semester haven't been set up." />
+      } @else {
+        <mat-accordion multi displayMode="flat">
+          @for (s of subjects; track s.id) {
+            <mat-expansion-panel>
+              <mat-expansion-panel-header>
+                <mat-panel-title class="!text-sm !font-medium">
+                  {{ s.code }} — {{ s.name }}
+                </mat-panel-title>
+                <mat-panel-description class="!text-xs">
+                  {{ s.credits }} cr · {{ s.faculty?.name }}
+                </mat-panel-description>
+              </mat-expansion-panel-header>
+              @if (s.syllabus && s.syllabus.length > 0) {
+                <div class="space-y-1">
+                  @for (topic of s.syllabus; track topic.id) {
+                    <div class="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-gray-50">
+                      <span class="text-sm text-gray-700">{{ topic.title }}</span>
+                      <mat-chip class="!text-xs" [class]="topic.status === 'COVERED' ? '!bg-emerald-100 !text-emerald-700' : '!bg-amber-100 !text-amber-700'">
+                        {{ topic.status }}
+                      </mat-chip>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="text-sm text-gray-400">No syllabus topics published yet.</p>
+              }
+            </mat-expansion-panel>
+          }
+        </mat-accordion>
+      }
+    </mat-card-content>
+  </mat-card>
+}
