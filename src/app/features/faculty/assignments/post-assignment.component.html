@@ -1,0 +1,113 @@
+<app-page-header title="Assignments" subtitle="Post new assignments and grade student submissions" />
+
+<mat-card class="mb-6 !rounded-xl">
+  <mat-card-header>
+    <mat-card-title class="!text-base">Post a new assignment</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <form [formGroup]="form" (ngSubmit)="create()" class="grid grid-cols-1 gap-4 lg:grid-cols-4">
+      <mat-form-field appearance="outline">
+        <mat-label>Subject</mat-label>
+        <mat-select formControlName="subjectId">
+          @for (s of subjects; track s.id) {
+            <mat-option [value]="s.id">{{ s.code }} — {{ s.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Title</mat-label>
+        <input matInput formControlName="title" placeholder="e.g. Assignment 3 — Data Structures" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Due date</mat-label>
+        <input matInput [matDatepicker]="picker" formControlName="dueDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+        <mat-datepicker #picker></mat-datepicker>
+      </mat-form-field>
+      <div class="flex items-end gap-2">
+        <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">
+          <mat-icon fontIcon="attach_file" />
+          {{ selectedFile ? selectedFile.name : 'Attach file' }}
+          <input type="file" class="hidden" (change)="onFileSelected($event)" />
+        </label>
+        <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || creating">
+          {{ creating ? 'Posting…' : 'Post' }}
+        </button>
+      </div>
+      <mat-form-field appearance="outline" class="lg:col-span-4">
+        <mat-label>Description (optional)</mat-label>
+        <textarea matInput rows="2" formControlName="description"></textarea>
+      </mat-form-field>
+    </form>
+  </mat-card-content>
+</mat-card>
+
+@if (loading) {
+  <div class="flex items-center justify-center py-20">
+    <mat-spinner diameter="40" />
+  </div>
+} @else if (assignments.length === 0) {
+  <app-empty-state icon="assignment" title="No assignments posted" message="Post your first assignment above." />
+} @else {
+  <mat-accordion multi displayMode="flat" class="space-y-2">
+    @for (a of assignments; track a.id) {
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title class="!text-sm !font-medium">{{ a.title }}</mat-panel-title>
+          <mat-panel-description class="!text-xs">
+            {{ a.subject?.code }} · due {{ a.dueDate | date: 'mediumDate' }} · {{ pendingCount(a) }} pending
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        @if (a.submissions.length === 0) {
+          <p class="text-sm text-gray-400">No submissions yet.</p>
+        } @else {
+          @for (s of a.submissions; track s.id) {
+            <div class="flex flex-wrap items-center gap-3 rounded-lg bg-gray-50 px-3 py-2 mb-2">
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium text-gray-800">
+                  {{ s.student?.rollNo }} — {{ s.student?.user?.name }}
+                </p>
+                <p class="text-xs text-gray-500">
+                  submitted {{ s.submittedAt | date: 'medium' }} ·
+                  @if (s.grade != null) {
+                    <span class="text-emerald-600">graded {{ s.grade }}/100</span>
+                  } @else {
+                    <span class="text-amber-600">awaiting grade</span>
+                  }
+                </p>
+                @if (s.feedback) {
+                  <p class="text-xs text-gray-600">Feedback: {{ s.feedback }}</p>
+                }
+              </div>
+              <mat-form-field appearance="outline" class="!w-24 !mb-0">
+                <mat-label>Grade</mat-label>
+                <input
+                  matInput
+                  #gradeInput
+                  type="number"
+                  min="0"
+                  max="100"
+                  [value]="s.grade ?? ''"
+                  placeholder="—"
+                />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="!w-56 !mb-0">
+                <mat-label>Feedback</mat-label>
+                <input matInput #feedbackInput [value]="s.feedback ?? ''" placeholder="Nice work!" />
+              </mat-form-field>
+              <button
+                mat-stroked-button
+                color="primary"
+                [disabled]="gradingId() === s.id"
+                (click)="grade(s, gradeInput.value, feedbackInput.value)"
+              >
+                {{ gradingId() === s.id ? 'Saving…' : 'Grade' }}
+              </button>
+            </div>
+          }
+        }
+      </mat-expansion-panel>
+    }
+  </mat-accordion>
+}

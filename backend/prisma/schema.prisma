@@ -1,0 +1,371 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  FACULTY
+  ADMIN
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LEAVE
+}
+
+enum ExamType {
+  INTERNAL
+  ENDSEM
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+}
+
+enum NoticeCategory {
+  EXAM
+  EVENT
+  HOLIDAY
+  GENERAL
+}
+
+enum DocumentType {
+  BONAFIDE
+  TRANSCRIPT
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum CoverageStatus {
+  COVERED
+  PENDING
+}
+
+model User {
+  id            String           @id @default(cuid())
+  email         String           @unique
+  passwordHash  String
+  name          String
+  role          Role
+  phone         String?
+  avatarUrl     String?
+  isActive      Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  studentProfile    StudentProfile?
+  facultyProfile    FacultyProfile?
+  refreshTokens     RefreshToken[]
+  noticesPosted     Notice[]             @relation("NoticesPostedBy")
+  assignmentsPosted Assignment[]         @relation("AssignmentsPostedBy")
+  attendanceMarked  AttendanceRecord[]   @relation("AttendanceMarkedBy")
+  subjectsTaught    Subject[]            @relation("SubjectsTaughtBy")
+  ticketMessages    TicketMessage[]
+  ticketsAssigned   Ticket[]             @relation("TicketsAssignedTo")
+
+  @@index([role])
+}
+
+model StudentProfile {
+  userId         String   @id
+  rollNo         String   @unique
+  course         String
+  branch         String
+  semester       Int
+  enrollmentYear Int
+
+  user             User               @relation(fields: [userId], references: [id])
+  attendance       AttendanceRecord[]
+  submissions      Submission[]
+  marks            Marks[]
+  payments         Payment[]
+  bookIssues       BookIssue[]
+  documentRequests DocumentRequest[]
+  tickets          Ticket[]
+  semesterResults  SemesterResult[]
+}
+
+model FacultyProfile {
+  userId      String   @id
+  empId       String   @unique
+  department  String
+  designation String
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Subject {
+  id         String  @id @default(cuid())
+  code       String  @unique
+  name       String
+  branch     String
+  semester   Int
+  credits    Int
+  facultyId  String
+  faculty    User    @relation("SubjectsTaughtBy", fields: [facultyId], references: [id])
+
+  attendance AttendanceRecord[]
+  assignments Assignment[]
+  exams        Exam[]
+  timetable    TimetableSlot[]
+  syllabus     SyllabusTopic[]
+
+  @@index([branch, semester])
+}
+
+model AttendanceRecord {
+  id          String           @id @default(cuid())
+  studentId   String
+  subjectId   String
+  date        DateTime         @db.Date
+  status      AttendanceStatus
+  markedById  String
+
+  student StudentProfile @relation(fields: [studentId], references: [userId])
+  subject Subject        @relation(fields: [subjectId], references: [id])
+  markedBy User          @relation("AttendanceMarkedBy", fields: [markedById], references: [id])
+
+  @@unique([studentId, subjectId, date])
+  @@index([subjectId, date])
+}
+
+model Assignment {
+  id          String   @id @default(cuid())
+  subjectId   String
+  facultyId   String
+  title       String
+  description String?
+  dueDate     DateTime @db.Date
+  fileUrl     String?
+  createdAt   DateTime @default(now())
+
+  subject      Subject      @relation(fields: [subjectId], references: [id])
+  faculty      User         @relation("AssignmentsPostedBy", fields: [facultyId], references: [id])
+  submissions  Submission[]
+}
+
+model Submission {
+  id           String   @id @default(cuid())
+  assignmentId String
+  studentId    String
+  fileUrl      String
+  submittedAt  DateTime @default(now())
+  grade        Int?
+  feedback     String?
+
+  assignment Assignment       @relation(fields: [assignmentId], references: [id])
+  student    StudentProfile   @relation(fields: [studentId], references: [userId])
+
+  @@unique([assignmentId, studentId])
+  @@index([studentId])
+}
+
+model Exam {
+  id        String   @id @default(cuid())
+  name      String
+  type      ExamType
+  course    String
+  branch    String
+  semester  Int
+  subjectId String
+  date      DateTime @db.Date
+  maxMarks  Int
+
+  subject Subject @relation(fields: [subjectId], references: [id])
+  marks   Marks[]
+
+  @@index([subjectId])
+}
+
+model Marks {
+  id        String @id @default(cuid())
+  studentId String
+  examId    String
+  obtained  Int
+
+  student StudentProfile @relation(fields: [studentId], references: [userId])
+  exam    Exam           @relation(fields: [examId], references: [id])
+
+  @@unique([studentId, examId])
+  @@index([examId])
+}
+
+model SemesterResult {
+  id          String @id @default(cuid())
+  studentId   String
+  semester    Int
+  sgpa        Float
+  credits     Int
+  attemptedCredit Int
+
+  student StudentProfile @relation(fields: [studentId], references: [userId])
+
+  @@unique([studentId, semester])
+}
+
+model FeeStructureItem {
+  id        String   @id @default(cuid())
+  title     String
+  course    String
+  branch    String
+  semester  Int
+  amount    Int
+  dueDate   DateTime @db.Date
+
+  payments Payment[]
+}
+
+model Payment {
+  id         String        @id @default(cuid())
+  studentId  String
+  itemId     String
+  amount     Int
+  status     PaymentStatus @default(PENDING)
+  paidAt     DateTime?
+  receiptUrl String?
+
+  student StudentProfile   @relation(fields: [studentId], references: [userId])
+  item    FeeStructureItem @relation(fields: [itemId], references: [id])
+
+  @@unique([studentId, itemId])
+  @@index([studentId])
+}
+
+model Notice {
+  id         String         @id @default(cuid())
+  title      String
+  body       String
+  category   NoticeCategory @default(GENERAL)
+  postedById String
+  createdAt  DateTime       @default(now())
+
+  postedBy User @relation("NoticesPostedBy", fields: [postedById], references: [id])
+
+  @@index([category, createdAt])
+}
+
+model Book {
+  id          String @id @default(cuid())
+  title       String
+  author      String
+  isbn        String @unique
+  totalCopies Int
+  available   Int
+
+  issues BookIssue[]
+}
+
+model BookIssue {
+  id         String    @id @default(cuid())
+  bookId     String
+  studentId  String
+  issuedAt   DateTime  @default(now())
+  dueDate    DateTime  @db.Date
+  returnedAt DateTime?
+  fine       Int?
+
+  book    Book          @relation(fields: [bookId], references: [id])
+  student StudentProfile @relation(fields: [studentId], references: [userId])
+
+  @@index([studentId])
+}
+
+model DocumentRequest {
+  id          String         @id @default(cuid())
+  studentId   String
+  type        DocumentType
+  status      DocumentStatus @default(PENDING)
+  note        String?
+  fileUrl     String?
+  requestedAt DateTime       @default(now())
+  processedAt DateTime?
+
+  student StudentProfile @relation(fields: [studentId], references: [userId])
+
+  @@index([studentId])
+}
+
+model Ticket {
+  id            String       @id @default(cuid())
+  studentId     String
+  subject       String
+  description   String
+  status        TicketStatus @default(OPEN)
+  assignedToId  String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  student  StudentProfile  @relation(fields: [studentId], references: [userId])
+  assignedTo  User?        @relation("TicketsAssignedTo", fields: [assignedToId], references: [id])
+  messages TicketMessage[]
+
+  @@index([studentId])
+}
+
+model TicketMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  author User   @relation(fields: [authorId], references: [id])
+}
+
+model TimetableSlot {
+  id          String @id @default(cuid())
+  subjectId   String
+  branch      String
+  semester    Int
+  dayOfWeek   Int // 0 (Mon) .. 6 (Sun)
+  startTime   String
+  endTime     String
+  room        String?
+
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@index([branch, semester, dayOfWeek])
+}
+
+model SyllabusTopic {
+  id        String         @id @default(cuid())
+  subjectId String
+  title     String
+  status    CoverageStatus @default(PENDING)
+  coveredOn DateTime?
+
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@index([subjectId])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}

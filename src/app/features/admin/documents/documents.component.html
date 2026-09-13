@@ -1,0 +1,90 @@
+<app-page-header title="Document Requests" subtitle="Review and approve student bonafide & transcript requests" />
+
+@if (loading) {
+  <div class="flex items-center justify-center py-20">
+    <mat-spinner diameter="40" />
+  </div>
+} @else {
+  <mat-tab-group class="mt-4">
+    <mat-tab label="Pending">
+      <div class="mt-4 space-y-3">
+        @for (r of pending(); track r.id) {
+          <mat-card class="!rounded-xl">
+            <mat-card-content class="flex flex-wrap items-start gap-3 py-3">
+              <mat-icon fontIcon="description" class="mt-1 text-gray-400" />
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-medium text-gray-800">{{ r.type }}</span>
+                  <span class="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-600">Pending</span>
+                  <span class="ml-auto text-xs text-gray-400">{{ r.requestedAt | date: 'medium' }}</span>
+                </div>
+                <p class="mt-0.5 text-sm text-gray-600">
+                  {{ r.student?.user?.name }} · {{ r.student?.user?.email }}{{ r.note ? ' · ' + r.note : '' }}
+                </p>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  mat-raised-button
+                  color="primary"
+                  [disabled]="actingId() === r.id"
+                  (click)="act(r.id, 'approve')"
+                >
+                  {{ actingId() === r.id ? 'Working…' : 'Approve' }}
+                </button>
+                <button
+                  mat-stroked-button
+                  [disabled]="actingId() === r.id"
+                  (click)="act(r.id, 'reject')"
+                >
+                  Reject
+                </button>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        } @empty {
+          <app-empty-state icon="verified" title="All caught up" message="No pending document requests." />
+        }
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Approved">
+      <div class="mt-4 space-y-3">
+        @for (r of decided(); track r.id) {
+          <mat-card class="!rounded-xl">
+            <mat-card-content class="py-3">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-medium text-gray-800">{{ r.type }}</span>
+                <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">Approved</span>
+                <span class="ml-auto text-xs text-gray-400">{{ r.requestedAt | date: 'medium' }}</span>
+              </div>
+              <p class="mt-0.5 text-sm text-gray-500">{{ r.student?.user?.name }} · {{ r.student?.user?.email }}</p>
+            </mat-card-content>
+          </mat-card>
+        } @empty {
+          <app-empty-state icon="description" title="No approved requests yet" />
+        }
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Rejected">
+      <div class="mt-4 space-y-3">
+        @for (r of requests; track r.id) {
+          @if (r.status === 'REJECTED') {
+            <mat-card class="!rounded-xl">
+              <mat-card-content class="py-3">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-medium text-gray-800">{{ r.type }}</span>
+                  <span class="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">Rejected</span>
+                  <span class="ml-auto text-xs text-gray-400">{{ r.requestedAt | date: 'medium' }}</span>
+                </div>
+                <p class="mt-0.5 text-sm text-gray-500">{{ r.student?.user?.name }} · {{ r.student?.user?.email }}</p>
+              </mat-card-content>
+            </mat-card>
+          }
+        } @empty {
+          <app-empty-state icon="block" title="No rejected requests" />
+        }
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+}

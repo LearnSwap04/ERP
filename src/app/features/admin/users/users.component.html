@@ -1,0 +1,99 @@
+<app-page-header title="User Management" subtitle="Create, view, and manage all system users" />
+
+<div class="mb-4 flex flex-wrap gap-2">
+  <button mat-stroked-button (click)="filter('')" [color]="filterRole() === '' ? 'primary' : ''">All</button>
+  <button mat-stroked-button (click)="filter('STUDENT')" [color]="filterRole() === 'STUDENT' ? 'primary' : ''">Students</button>
+  <button mat-stroked-button (click)="filter('FACULTY')" [color]="filterRole() === 'FACULTY' ? 'primary' : ''">Faculty</button>
+  <button mat-stroked-button (click)="filter('ADMIN')" [color]="filterRole() === 'ADMIN' ? 'primary' : ''">Admins</button>
+</div>
+
+<mat-card class="mb-6 !rounded-xl">
+  <mat-card-header>
+    <mat-card-title class="!text-base">{{ editingId() ? 'Edit User' : 'Create New User' }}</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <form [formGroup]="form" (ngSubmit)="submit()" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <mat-form-field appearance="outline">
+        <mat-label>Name</mat-label>
+        <input matInput formControlName="name" placeholder="Full name" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Email</mat-label>
+        <input matInput formControlName="email" type="email" placeholder="user&#64;erp.test" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ editingId() ? 'New password (blank to keep)' : 'Password' }}</mat-label>
+        <input matInput formControlName="password" type="password" placeholder="Min 6 chars" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Role</mat-label>
+        <mat-select formControlName="role">
+          <mat-option value="STUDENT">Student</mat-option>
+          <mat-option value="FACULTY">Faculty</mat-option>
+          <mat-option value="ADMIN">Admin</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Phone</mat-label>
+        <input matInput formControlName="phone" placeholder="Optional" />
+      </mat-form-field>
+      <div class="flex items-end gap-2">
+        <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || creating">
+          {{ creating ? 'Saving…' : editingId() ? 'Update' : 'Create' }}
+        </button>
+        @if (editingId()) {
+          <button mat-stroked-button type="button" (click)="cancelEdit()">Cancel</button>
+        }
+      </div>
+    </form>
+  </mat-card-content>
+</mat-card>
+
+@if (loading) {
+  <div class="flex items-center justify-center py-20">
+    <mat-spinner diameter="40" />
+  </div>
+} @else if (users.length === 0) {
+  <app-empty-state icon="group" title="No users found" message="Create a user above." />
+} @else {
+  <mat-card class="!rounded-xl overflow-hidden">
+    <div class="overflow-x-auto">
+      <table mat-table [dataSource]="users" class="w-full">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Name</th>
+          <td mat-cell *matCellDef="let u">{{ u.name }}</td>
+        </ng-container>
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef>Email</th>
+          <td mat-cell *matCellDef="let u">{{ u.email }}</td>
+        </ng-container>
+        <ng-container matColumnDef="role">
+          <th mat-header-cell *matHeaderCellDef>Role</th>
+          <td mat-cell *matCellDef="let u">
+            <mat-chip [class]="'bg-' + roleTone(u.role) + '-100 text-' + roleTone(u.role) + '-800'">
+              {{ roleLabel(u.role) }}
+            </mat-chip>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="active">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let u">
+            <mat-slide-toggle [checked]="u.isActive" (change)="toggleActive(u)" matTooltip="Toggle active status">
+              {{ u.isActive ? 'Active' : 'Inactive' }}
+            </mat-slide-toggle>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="!text-right">Actions</th>
+          <td mat-cell *matCellDef="let u" class="!text-right">
+            <button mat-icon-button (click)="startEdit(u)" matTooltip="Edit user">
+              <mat-icon fontIcon="edit" />
+            </button>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="['name', 'email', 'role', 'active', 'actions']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['name', 'email', 'role', 'active', 'actions']"></tr>
+      </table>
+    </div>
+  </mat-card>
+}

@@ -1,0 +1,95 @@
+<app-page-header
+  title="Student Dashboard"
+  subtitle="Attendance at a glance, upcoming deadlines and the latest notices"
+/>
+
+@if (loading) {
+  <div class="flex items-center justify-center py-20">
+    <mat-spinner diameter="40" />
+  </div>
+} @else if (data) {
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <app-stat-card
+      label="Attendance"
+      [value]="data.attendance.overall.percentage + '%'"
+      icon="fact_check"
+      [tone]="data.attendance.overall.meetsThreshold ? 'success' : 'warn'"
+    />
+    <app-stat-card label="Classes attended" [value]="data.attendance.overall.present" icon="how_to_reg" tone="primary" />
+    <app-stat-card label="Last semester SGPA" [value]="data.lastSemesterSgpa ?? '—'" icon="grade" tone="accent" />
+    <app-stat-card label="Pending assignments" [value]="upcomingCount()" icon="assignment" tone="warn" />
+  </div>
+
+  <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <mat-card class="!rounded-xl lg:col-span-2">
+      <mat-card-header>
+        <mat-card-title class="!text-base">Upcoming assignments</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        @if (data.upcomingAssignments.length === 0) {
+          <app-empty-state icon="task_alt" title="All caught up" message="No pending assignments right now." />
+        } @else {
+          <mat-list>
+            @for (a of data.upcomingAssignments; track a.id) {
+              <mat-list-item>
+                <mat-icon matListItemIcon [fontIcon]="a.submitted ? 'task_alt' : 'schedule'" class="!text-gray-500" />
+                <span matListItemTitle>{{ a.title }}</span>
+                <span matListItemLine>
+                  {{ a.subjectCode }} · due {{ a.dueDate | date: 'mediumDate' }} ·
+                  {{ a.submitted ? 'submitted' : 'not submitted' }}
+                </span>
+              </mat-list-item>
+            }
+          </mat-list>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="!rounded-xl">
+      <mat-card-header>
+        <mat-card-title class="!text-base">Attendance by subject</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-list dense>
+          @for (row of data.attendance.subjects; track row.subject.id) {
+            <mat-list-item>
+              <span matListItemTitle>{{ row.subject.code }} — {{ row.summary.percentage }}%</span>
+              <div
+                matListItemMeta
+                class="!h-2 !w-20 rounded-full bg-gray-100"
+                [attr.aria-label]="'Attendance ' + row.summary.percentage + ' percent'"
+              >
+                <div
+                  class="h-full rounded-full"
+                  [ngClass]="row.summary.meetsThreshold ? 'bg-emerald-500' : 'bg-red-400'"
+                  [style.width.%]="row.summary.percentage"
+                ></div>
+              </div>
+            </mat-list-item>
+          }
+        </mat-list>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <mat-card class="mt-6 !rounded-xl">
+    <mat-card-header>
+      <mat-card-title class="!text-base">Latest notices</mat-card-title>
+    </mat-card-header>
+    <mat-card-content class="!pb-2">
+      @for (notice of data.notices.slice(0, 5); track notice.id) {
+        <div class="pb-3">
+          <div class="flex items-center gap-2">
+            <span class="font-medium text-gray-800">{{ notice.title }}</span>
+            <span class="ml-auto text-xs text-gray-400">{{ notice.createdAt | date: 'mediumDate' }}</span>
+          </div>
+          <p class="mt-0.5 text-sm text-gray-500">{{ notice.body }}</p>
+          <mat-divider class="mt-2" />
+        </div>
+      }
+      @if (data.notices.length === 0) {
+        <app-empty-state icon="campaign" title="No notices yet" />
+      }
+    </mat-card-content>
+  </mat-card>
+}

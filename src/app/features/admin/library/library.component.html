@@ -1,0 +1,139 @@
+<app-page-header title="Library Management" subtitle="Maintain the catalogue and track book issues" />
+
+<mat-tab-group class="mt-4">
+  <mat-tab label="Catalogue">
+    <mat-card class="mt-4 !rounded-xl">
+      <mat-card-header>
+        <mat-card-title class="!text-base">Add a Book</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="bookForm" (ngSubmit)="createBook()" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <mat-form-field appearance="outline">
+            <mat-label>Title</mat-label>
+            <input matInput formControlName="title" placeholder="Book title" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Author</mat-label>
+            <input matInput formControlName="author" placeholder="Author name" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>ISBN (optional)</mat-label>
+            <input matInput formControlName="isbn" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Total copies</mat-label>
+            <input matInput formControlName="totalCopies" type="number" min="1" />
+          </mat-form-field>
+          <button mat-raised-button color="primary" type="submit" [disabled]="bookForm.invalid || creating" class="!w-fit">
+            {{ creating ? 'Adding…' : 'Add Book' }}
+          </button>
+        </form>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="mt-4 !rounded-xl overflow-hidden">
+      <mat-card-content class="p-0">
+        @if (loading) {
+          <div class="flex items-center justify-center py-20">
+            <mat-spinner diameter="40" />
+          </div>
+        } @else if (books.length === 0) {
+          <app-empty-state icon="menu_book" title="No books in the catalogue" />
+        } @else {
+          <div class="overflow-x-auto">
+            <table mat-table [dataSource]="books" class="w-full">
+              <ng-container matColumnDef="title">
+                <th mat-header-cell *matHeaderCellDef>Title</th>
+                <td mat-cell *matCellDef="let b">{{ b.title }}</td>
+              </ng-container>
+              <ng-container matColumnDef="author">
+                <th mat-header-cell *matHeaderCellDef>Author</th>
+                <td mat-cell *matCellDef="let b">{{ b.author }}</td>
+              </ng-container>
+              <ng-container matColumnDef="copies">
+                <th mat-header-cell *matHeaderCellDef>Copies</th>
+                <td mat-cell *matCellDef="let b">
+                  <mat-chip class="!text-xs">
+                    {{ copiesLeft(b) }} / {{ b.totalCopies }} available
+                  </mat-chip>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Issue</th>
+                <td mat-cell *matCellDef="let b">
+                  @if (issueBookId() === b.id) {
+                    <div class="flex items-center gap-2">
+                      <mat-form-field appearance="outline" class="!mb-0 !w-40">
+                        <mat-label>Student ID</mat-label>
+                        <input matInput [ngModel]="issueStudent()" (ngModelChange)="issueStudent.set($event)" />
+                      </mat-form-field>
+                      <button mat-raised-button color="primary" (click)="issueTo(b.id)" [disabled]="copiesLeft(b) === 0">
+                        Go
+                      </button>
+                    </div>
+                  } @else {
+                    <button
+                      mat-stroked-button
+                      color="primary"
+                      (click)="issueBookId.set(b.id)"
+                      [disabled]="copiesLeft(b) === 0"
+                    >
+                      {{ copiesLeft(b) === 0 ? 'Unavailable' : 'Issue' }}
+                    </button>
+                  }
+                </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="['title', 'author', 'copies', 'actions']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['title', 'author', 'copies', 'actions']"></tr>
+            </table>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  </mat-tab>
+
+  <mat-tab label="Issues">
+    <mat-card class="mt-4 !rounded-xl overflow-hidden">
+      <mat-card-content class="p-0">
+        @if (issues.length === 0) {
+          <app-empty-state icon="bookmark" title="No active book issues" />
+        } @else {
+          <div class="overflow-x-auto">
+            <table mat-table [dataSource]="issues" class="w-full">
+              <ng-container matColumnDef="student">
+                <th mat-header-cell *matHeaderCellDef>Student</th>
+                <td mat-cell *matCellDef="let i">{{ i.student.user.name }}</td>
+              </ng-container>
+              <ng-container matColumnDef="book">
+                <th mat-header-cell *matHeaderCellDef>Book</th>
+                <td mat-cell *matCellDef="let i">{{ i.book.title }}</td>
+              </ng-container>
+              <ng-container matColumnDef="due">
+                <th mat-header-cell *matHeaderCellDef>Due</th>
+                <td mat-cell *matCellDef="let i">{{ i.dueDate | date: 'mediumDate' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="status">
+                <th mat-header-cell *matHeaderCellDef>Status</th>
+                <td mat-cell *matCellDef="let i">
+                  <mat-chip [class]="i.returnedAt ? '!text-gray-400' : '!text-amber-600'" class="!text-xs">
+                    {{ i.returnedAt ? 'Returned' : 'Borrowed' }}
+                  </mat-chip>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Actions</th>
+                <td mat-cell *matCellDef="let i">
+                  @if (!i.returnedAt) {
+                    <button mat-stroked-button color="primary" (click)="returnBook(i)">Mark returned</button>
+                  }
+                </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="['student', 'book', 'due', 'status', 'actions']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['student', 'book', 'due', 'status', 'actions']"></tr>
+            </table>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  </mat-tab>
+</mat-tab-group>

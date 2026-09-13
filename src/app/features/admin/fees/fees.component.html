@@ -1,0 +1,112 @@
+<app-page-header title="Fee Management" subtitle="Configure fee structure and review payments" />
+
+<mat-tab-group class="mt-4">
+  <mat-tab label="Structure">
+    <mat-card class="mt-4 !rounded-xl">
+      <mat-card-header>
+        <mat-card-title class="!text-base">Add Fee Item</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="itemForm" (ngSubmit)="createItem()" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <mat-form-field appearance="outline">
+            <mat-label>Title</mat-label>
+            <input matInput formControlName="title" placeholder="e.g. Tuition — Semester 1" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Course</mat-label>
+            <input matInput formControlName="course" placeholder="B.Tech" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Branch (optional)</mat-label>
+            <input matInput formControlName="branch" placeholder="CSE" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Semester</mat-label>
+            <input matInput formControlName="semester" type="number" min="1" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Amount (₹)</mat-label>
+            <input matInput formControlName="amount" type="number" min="1" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Due date</mat-label>
+            <input matInput [matDatepicker]="picker" formControlName="dueDate" />
+            <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+            <mat-datepicker #picker></mat-datepicker>
+          </mat-form-field>
+          <button mat-raised-button color="primary" type="submit" [disabled]="itemForm.invalid || creating" class="!w-fit">
+            {{ creating ? 'Saving…' : 'Add Fee Item' }}
+          </button>
+        </form>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="mt-4 !rounded-xl overflow-hidden">
+      <mat-card-content class="p-0">
+        @if (loading) {
+          <div class="flex items-center justify-center py-20">
+            <mat-spinner diameter="40" />
+          </div>
+        } @else if (items.length === 0) {
+          <app-empty-state icon="payments" title="No fee items configured" />
+        } @else {
+          <div class="overflow-x-auto">
+            <table mat-table [dataSource]="items" class="w-full">
+              <ng-container matColumnDef="title">
+                <th mat-header-cell *matHeaderCellDef>Title</th>
+                <td mat-cell *matCellDef="let i">{{ i.title }}</td>
+              </ng-container>
+              <ng-container matColumnDef="audience">
+                <th mat-header-cell *matHeaderCellDef>Audience</th>
+                <td mat-cell *matCellDef="let i">{{ i.course }}{{ i.branch ? ' · ' + i.branch : '' }} · Sem {{ i.semester }}</td>
+              </ng-container>
+              <ng-container matColumnDef="amount">
+                <th mat-header-cell *matHeaderCellDef>Amount</th>
+                <td mat-cell *matCellDef="let i">{{ i.amount | currency: 'INR' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="dueDate">
+                <th mat-header-cell *matHeaderCellDef>Due</th>
+                <td mat-cell *matCellDef="let i">{{ i.dueDate | date: 'mediumDate' }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="['title', 'audience', 'amount', 'dueDate']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['title', 'audience', 'amount', 'dueDate']"></tr>
+            </table>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  </mat-tab>
+
+  <mat-tab label="Payments">
+    <mat-card class="mt-4 !rounded-xl overflow-hidden">
+      <mat-card-content class="p-0">
+        @if (payments.length === 0) {
+          <app-empty-state icon="receipt_long" title="No payments recorded yet" />
+        } @else {
+          <div class="overflow-x-auto">
+            <table mat-table [dataSource]="payments" class="w-full">
+              <ng-container matColumnDef="student">
+                <th mat-header-cell *matHeaderCellDef>Student</th>
+                <td mat-cell *matCellDef="let p">{{ p.student.user.name }}</td>
+              </ng-container>
+              <ng-container matColumnDef="item">
+                <th mat-header-cell *matHeaderCellDef>Item</th>
+                <td mat-cell *matCellDef="let p">{{ p.item.title }}</td>
+              </ng-container>
+              <ng-container matColumnDef="amount">
+                <th mat-header-cell *matHeaderCellDef>Amount</th>
+                <td mat-cell *matCellDef="let p">{{ p.amount | currency: 'INR' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="paidAt">
+                <th mat-header-cell *matHeaderCellDef>Paid on</th>
+                <td mat-cell *matCellDef="let p">{{ p.paidAt | date: 'medium' }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="['student', 'item', 'amount', 'paidAt']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['student', 'item', 'amount', 'paidAt']"></tr>
+            </table>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  </mat-tab>
+</mat-tab-group>

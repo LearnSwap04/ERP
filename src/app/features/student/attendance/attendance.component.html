@@ -1,0 +1,174 @@
+<app-page-header
+  title="My Attendance"
+  subtitle="Subject-wise attendance percentage with a bunk calculator"
+/>
+
+@if (loading) {
+  <div class="flex items-center justify-center py-20">
+    <mat-spinner diameter="40" />
+  </div>
+} @else if (my) {
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <app-stat-card label="Attendance" [value]="my.overall.percentage + '%'" icon="fact_check" tone="primary" />
+    <app-stat-card label="Classes attended" [value]="my.overall.present" icon="how_to_reg" tone="success" />
+    <app-stat-card label="Classes missed" [value]="my.overall.absent" icon="event_busy" tone="warn" />
+    <app-stat-card label="Leaves" [value]="my.overall.leave" icon="beach_access" tone="accent" />
+  </div>
+
+  <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <mat-card class="!rounded-xl lg:col-span-2">
+      <mat-card-header>
+        <mat-card-title class="!text-base">Subject-wise attendance</mat-card-title>
+        <mat-card-subtitle>Minimum required: {{ my.overall.meetsThreshold ? 'met' : 'not met — below 75%' }}</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="overflow-x-auto">
+          <table mat-table [dataSource]="my.subjects" class="w-full">
+            <ng-container matColumnDef="subject">
+              <th mat-header-cell *matHeaderCellDef>Subject</th>
+              <td mat-cell *matCellDef="let row">
+                <span class="font-medium">{{ row.subject.code }}</span>
+                <span class="ml-2 text-sm text-gray-500">{{ row.subject.name }}</span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="present">
+              <th mat-header-cell *matHeaderCellDef class="text-right">P</th>
+              <td mat-cell *matCellDef="let row" class="text-right">{{ row.summary.present }}</td>
+            </ng-container>
+            <ng-container matColumnDef="absent">
+              <th mat-header-cell *matHeaderCellDef class="text-right">A</th>
+              <td mat-cell *matCellDef="let row" class="text-right">{{ row.summary.absent }}</td>
+            </ng-container>
+            <ng-container matColumnDef="percentage">
+              <th mat-header-cell *matHeaderCellDef>Percentage</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="flex items-center gap-2">
+                  <div class="h-2 w-24 rounded-full bg-gray-100">
+                    <div
+                      class="h-full rounded-full"
+                      [ngClass]="row.summary.meetsThreshold ? 'bg-emerald-500' : 'bg-red-400'"
+                      [style.width.%]="absolutePct(row.summary)"
+                    ></div>
+                  </div>
+                  <span class="text-sm">{{ row.summary.percentage }}%</span>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let row">
+                <mat-chip [class]="row.summary.meetsThreshold ? '!bg-emerald-100 !text-emerald-700' : '!bg-red-100 !text-red-700'">
+                  {{ row.summary.meetsThreshold ? 'On track' : 'Low' }}
+                </mat-chip>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="['subject', 'present', 'absent', 'percentage', 'status']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['subject', 'present', 'absent', 'percentage', 'status']"></tr>
+          </table>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="!rounded-xl">
+      <mat-card-header>
+        <mat-card-title class="!text-base">Overall breakdown</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="h-56 w-full">
+          <canvas baseChart [data]="attendanceData" [options]="attendanceOptions" type="doughnut"> </canvas>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <mat-card class="mt-6 !rounded-xl">
+    <mat-card-header>
+      <mat-card-title class="!text-base">Bunk calculator</mat-card-title>
+      <mat-card-subtitle>Classes you can skip (at {{ bunk?.threshold ?? 75 }}% threshold) while staying on track</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      @if (bunk) {
+        <div class="overflow-x-auto">
+          <table mat-table [dataSource]="bunk.rows" class="w-full">
+            <ng-container matColumnDef="subject">
+              <th mat-header-cell *matHeaderCellDef>Subject</th>
+              <td mat-cell *matCellDef="let row">
+                <span class="font-medium">{{ row.code }}</span> <span class="text-sm text-gray-500">{{ row.name }}</span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="count">
+              <th mat-header-cell *matHeaderCellDef class="text-right">Classes</th>
+              <td mat-cell *matCellDef="let row" class="text-right">{{ row.total }}</td>
+            </ng-container>
+            <ng-container matColumnDef="attended">
+              <th mat-header-cell *matHeaderCellDef class="text-right">Attended</th>
+              <td mat-cell *matCellDef="let row" class="text-right">{{ row.attended }}</td>
+            </ng-container>
+            <ng-container matColumnDef="percentage">
+              <th mat-header-cell *matHeaderCellDef class="text-right">%</th>
+              <td mat-cell *matCellDef="let row" class="text-right">{{ row.percentage }}%</td>
+            </ng-container>
+            <ng-container matColumnDef="canMiss">
+              <th mat-header-cell *matHeaderCellDef>Can skip</th>
+              <td mat-cell *matCellDef="let row">
+                @if (row.canMiss > 0) {
+                  <span class="font-semibold text-emerald-600">{{ row.canMiss }} class(es)</span>
+                } @else {
+                  <span class="font-medium text-red-500">Must attend all</span>
+                }
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="['subject', 'count', 'attended', 'percentage', 'canMiss']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['subject', 'count', 'attended', 'percentage', 'canMiss']"></tr>
+          </table>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="mt-6 !rounded-xl">
+    <mat-card-header>
+      <mat-card-title class="!text-base">Recent records</mat-card-title>
+      <mat-card-subtitle>Your latest marked classes (up to 50)</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      @if (my.records.length === 0) {
+        <div class="py-6 text-center text-sm text-gray-500">No attendance records yet.</div>
+      } @else {
+        <div class="overflow-x-auto">
+          <table mat-table [dataSource]="my.records" class="w-full">
+            <ng-container matColumnDef="date">
+              <th mat-header-cell *matHeaderCellDef>Date</th>
+              <td mat-cell *matCellDef="let row">{{ row.date | date: 'EEE, dd MMM yyyy' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="subject">
+              <th mat-header-cell *matHeaderCellDef>Subject</th>
+              <td mat-cell *matCellDef="let row">
+                <span class="font-medium">{{ row.subject?.code }}</span>
+                <span class="ml-2 text-sm text-gray-500">{{ row.subject?.name }}</span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let row">
+                @switch (row.status) {
+                  @case ('PRESENT') {
+                    <mat-chip class="!bg-emerald-100 !text-emerald-700">Present</mat-chip>
+                  }
+                  @case ('ABSENT') {
+                    <mat-chip class="!bg-red-100 !text-red-700">Absent</mat-chip>
+                  }
+                  @case ('LEAVE') {
+                    <mat-chip class="!bg-amber-100 !text-amber-700">Leave</mat-chip>
+                  }
+                }
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="['date', 'subject', 'status']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['date', 'subject', 'status']"></tr>
+          </table>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+}

@@ -1,0 +1,55 @@
+<app-page-header title="Faculty Dashboard" subtitle="Your classes, pending work and the latest notices" />
+
+@if (loading) {
+  <div class="flex items-center justify-center py-20">
+    <mat-spinner diameter="40" />
+  </div>
+} @else if (data) {
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <app-stat-card label="Subjects taught" [value]="data.subjects.length" icon="menu_book" tone="primary" />
+    <app-stat-card label="Pending submissions" [value]="data.pendingSubmissions" icon="assignment" tone="warn" />
+    <app-stat-card label="Classes today" [value]="data.todayClasses" icon="today" tone="success" />
+  </div>
+
+  <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <mat-card class="!rounded-xl">
+      <mat-card-header>
+        <mat-card-title class="!text-base">My subjects</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        @if (data.subjects.length === 0) {
+          <app-empty-state icon="menu_book" title="No subjects assigned" message="Your subjects haven't been assigned yet." />
+        } @else {
+          <mat-list>
+            @for (s of data.subjects; track s.id) {
+              <mat-list-item>
+                <mat-icon matListItemIcon fontIcon="menu_book" class="!text-gray-500" />
+                <span matListItemTitle>{{ s.code }} — {{ s.name }}</span>
+                <span matListItemLine>Semester {{ s.semester }} · {{ s.branch }}</span>
+              </mat-list-item>
+            }
+          </mat-list>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="!rounded-xl">
+      <mat-card-header>
+        <mat-card-title class="!text-base">Latest notices</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        @for (notice of data.notices; track notice.id) {
+          <div class="pb-3">
+            <div class="flex items-center gap-2">
+              <span class="font-medium text-gray-800">{{ notice.title }}</span>
+              <span class="ml-auto text-xs text-gray-400">{{ notice.createdAt | date: 'mediumDate' }}</span>
+            </div>
+            <p class="mt-0.5 text-sm text-gray-500">{{ notice.body }}</p>
+          </div>
+        } @empty {
+          <app-empty-state icon="campaign" title="No notices" />
+        }
+      </mat-card-content>
+    </mat-card>
+  </div>
+}

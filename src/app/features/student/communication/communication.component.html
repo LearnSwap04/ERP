@@ -1,0 +1,82 @@
+<app-page-header title="Queries" subtitle="Raise a ticket for academic or administrative help" />
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  <mat-card class="h-fit !rounded-xl">
+    <mat-card-header>
+      <mat-card-title class="!text-base">Raise a query</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <form [formGroup]="ticketForm" (ngSubmit)="createTicket()" class="flex flex-col gap-4">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Subject</mat-label>
+          <input matInput formControlName="subject" placeholder="e.g. Marks not updated" />
+          @if (ticketForm.controls.subject.hasError('required')) {
+            <mat-error>Subject is required</mat-error>
+          }
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Describe the issue</mat-label>
+          <textarea matInput rows="4" formControlName="description"></textarea>
+          @if (ticketForm.controls.description.hasError('required')) {
+            <mat-error>Please describe the issue</mat-error>
+          }
+        </mat-form-field>
+        <button mat-raised-button color="primary" type="submit" [disabled]="ticketForm.invalid || submittingTicket">
+          {{ submittingTicket ? 'Submitting…' : 'Submit ticket' }}
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="!rounded-xl lg:col-span-2">
+    <mat-card-header>
+      <mat-card-title class="!text-base">My tickets</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      @if (loading) {
+        <div class="flex items-center justify-center py-16">
+          <mat-spinner diameter="36" />
+        </div>
+      } @else if (tickets.length === 0) {
+        <app-empty-state icon="support_agent" title="No queries yet" message="Tickets you raise will appear here." />
+      } @else {
+        <mat-accordion multi displayMode="flat">
+          @for (t of tickets; track t.id) {
+            <mat-expansion-panel>
+              <mat-expansion-panel-header>
+                <mat-panel-title class="!text-sm !font-medium">{{ t.subject }}</mat-panel-title>
+                <mat-panel-description class="!text-xs">
+                  <mat-chip [class]="
+                    t.status === 'RESOLVED' ? '!bg-emerald-100 !text-emerald-700' :
+                    t.status === 'IN_PROGRESS' ? '!bg-blue-100 !text-blue-700' : '!bg-amber-100 !text-amber-700'
+                  ">{{ t.status }}</mat-chip>
+                </mat-panel-description>
+              </mat-expansion-panel-header>
+              <p class="text-sm text-gray-600">{{ t.description }}</p>
+              <mat-divider class="my-3" />
+              <div class="space-y-2">
+                @for (m of t.messages; track m.id) {
+                  <div class="rounded-lg bg-gray-50 px-3 py-2">
+                    <div class="flex items-center justify-between text-xs text-gray-500">
+                      <span class="font-medium">{{ m.author?.name }} · {{ m.author?.role }}</span>
+                      <span>{{ m.createdAt | date: 'short' }}</span>
+                    </div>
+                    <p class="mt-1 text-sm text-gray-700">{{ m.body }}</p>
+                  </div>
+                }
+              </div>
+              <div class="mt-3 flex items-center gap-2">
+                <mat-form-field appearance="outline" class="w-full !mb-0">
+                  <input matInput [formControl]="replyForm.controls.body" placeholder="Write a reply…" />
+                </mat-form-field>
+                <button mat-stroked-button color="primary" (click)="reply(t)" [disabled]="replyForm.invalid">
+                  Reply
+                </button>
+              </div>
+            </mat-expansion-panel>
+          }
+        </mat-accordion>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

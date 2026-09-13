@@ -1,0 +1,71 @@
+<app-page-header title="Notices" subtitle="Create, edit, and delete campus notices" />
+
+<mat-card class="mb-6 !rounded-xl">
+  <mat-card-header>
+    <mat-card-title class="!text-base">{{ editingId() ? 'Edit Notice' : 'Post a New Notice' }}</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <form [formGroup]="form" (ngSubmit)="submit()" class="grid grid-cols-1 gap-4 lg:grid-cols-4">
+      <mat-form-field appearance="outline" class="lg:col-span-2">
+        <mat-label>Title</mat-label>
+        <input matInput formControlName="title" placeholder="Notice title" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Category</mat-label>
+        <mat-select formControlName="category">
+          <mat-option value="GENERAL">General</mat-option>
+          <mat-option value="EXAM">Exam</mat-option>
+          <mat-option value="EVENT">Event</mat-option>
+          <mat-option value="HOLIDAY">Holiday</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <div class="flex items-end gap-2">
+        <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || creating">
+          {{ creating ? 'Saving…' : editingId() ? 'Update' : 'Post' }}
+        </button>
+        @if (editingId()) {
+          <button mat-stroked-button type="button" (click)="cancelEdit()">Cancel</button>
+        }
+      </div>
+      <mat-form-field appearance="outline" class="lg:col-span-4">
+        <mat-label>Body</mat-label>
+        <textarea matInput rows="3" formControlName="body" placeholder="Notice content…"></textarea>
+      </mat-form-field>
+    </form>
+  </mat-card-content>
+</mat-card>
+
+@if (loading) {
+  <div class="flex items-center justify-center py-20">
+    <mat-spinner diameter="40" />
+  </div>
+} @else if (notices.length === 0) {
+  <app-empty-state icon="campaign" title="No notices yet" message="Post your first notice above." />
+} @else {
+  <div class="space-y-3">
+    @for (n of notices; track n.id) {
+      <mat-card class="!rounded-xl">
+        <mat-card-content class="flex items-start gap-4 py-3">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-medium text-gray-800">{{ n.title }}</span>
+              <span class="rounded-full px-2 py-0.5 text-xs font-medium {{ categoryColor(n.category) }}">
+                {{ n.category }}
+              </span>
+              <span class="ml-auto text-xs text-gray-400">{{ n.createdAt | date: 'medium' }}</span>
+            </div>
+            <p class="mt-1 text-sm text-gray-600">{{ n.body }}</p>
+          </div>
+          <div class="flex gap-1">
+            <button mat-icon-button (click)="startEdit(n)" matTooltip="Edit">
+              <mat-icon fontIcon="edit" class="!text-gray-400" />
+            </button>
+            <button mat-icon-button (click)="deleteNotice(n)" matTooltip="Delete">
+              <mat-icon fontIcon="delete" class="!text-red-400" />
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  </div>
+}
