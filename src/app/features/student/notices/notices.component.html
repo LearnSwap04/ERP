@@ -1,0 +1,54 @@
+<app-page-header title="Notices" subtitle="Announcements from the administration" />
+
+@if (loading) {
+  <div class="flex items-center justify-center py-20">
+    <mat-spinner diameter="40" />
+  </div>
+} @else if (notices.length === 0 && activeCategory === 'ALL') {
+  <app-empty-state icon="campaign" title="No notices yet" message="Check back later for announcements." />
+} @else {
+  <div class="mx-auto max-w-3xl">
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+      <span class="text-sm font-medium text-gray-500">Filter</span>
+      @for (category of categories; track category) {
+        <button
+          mat-stroked-button
+          class="!h-8 !text-xs"
+          (click)="filterBy(category)"
+          [class.!bg-blue-600]="activeCategory === category"
+          [class.!text-white]="activeCategory === category"
+        >
+          {{ category }}
+        </button>
+      }
+    </div>
+
+    @if (notices.length === 0) {
+      <app-empty-state
+        icon="filter_alt_off"
+        title="No notices in this category"
+        message="Try another category or clear the filter."
+      />
+    }
+
+    <div class="space-y-4">
+      @for (notice of notices; track notice.id) {
+      <mat-card class="!rounded-xl">
+        <mat-card-header>
+          <mat-icon mat-card-avatar [fontIcon]="iconFor(notice.category)" class="!text-blue-600" />
+          <mat-card-title class="!text-base">{{ notice.title }}</mat-card-title>
+          <mat-card-subtitle class="flex items-center gap-2">
+            {{ notice.createdAt | date: 'medium' }} · {{ noticePostedBy(notice) }}
+          </mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="text-sm text-gray-700">{{ notice.body }}</p>
+        </mat-card-content>
+        <mat-card-actions class="!px-4 !pb-3">
+          <mat-chip class="!bg-blue-50 !text-blue-700">{{ notice.category }}</mat-chip>
+        </mat-card-actions>
+      </mat-card>
+      }
+    </div>
+    </div>
+}
