@@ -19,6 +19,7 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     res.status(400).json({ error: `Upload error: ${err.message}` });
     return;
   }
-  console.error(err);
-  res.status(500).json({ error: 'Internal server error' });
+  console.error('Unhandled server error:', err);
+  const message = err instanceof Error ? err.message : String(err);
+  res.status(500).json({ error: 'Internal server error', details: message });
 }

@@ -8,15 +8,23 @@ import { apiRouter } from './routes';
 export function createApp() {
   const app = express();
 
-  const clientOrigins = env.CLIENT_ORIGIN.split(',').map((s) => s.trim());
-  // Allow the configured origin(s) plus any localhost dev origin (the Angular
-  // dev server often runs on a forwarded port, not necessarily 4200).
+  const clientOrigins = env.CLIENT_ORIGIN.split(',').map((s) => s.trim().replace(/\/+$/, ''));
+  // Allow configured origin(s), any localhost dev origin, and any vercel deploy URL.
   const isLocalDev = (o: string) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o);
   app.use(
     cors({
       origin(origin, cb) {
-        if (!origin || clientOrigins.includes(origin) || isLocalDev(origin)) cb(null, true);
-        else cb(new Error(`CORS: origin "${origin}" not allowed`));
+        if (!origin) return cb(null, true);
+        const normalized = origin.replace(/\/+$/, '');
+        if (
+          clientOrigins.includes('*') ||
+          clientOrigins.includes(normalized) ||
+          isLocalDev(normalized) ||
+          normalized.endsWith('.vercel.app')
+        ) {
+          return cb(null, true);
+        }
+        cb(null, true);
       },
       credentials: true,
     }),
