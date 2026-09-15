@@ -1,5 +1,5 @@
 export const environment = {
   production: true,
   // Production API origin — replace with the deployed backend URL.
-  apiUrl: 'https://api.erp.example.com/api',
+  apiUrl: 'https://erp-backend-2rme.onrender.com',
 };
