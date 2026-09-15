@@ -9,7 +9,7 @@
       <mat-form-field appearance="outline">
         <mat-label>Subject</mat-label>
         <mat-select formControlName="subjectId">
-          @for (s of subjects; track s.id) {
+          @for (s of subjects(); track s.id) {
             <mat-option [value]="s.id">{{ s.code }} — {{ s.name }}</mat-option>
           }
         </mat-select>
@@ -27,11 +27,11 @@
       <div class="flex items-end gap-2">
         <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">
           <mat-icon fontIcon="attach_file" />
-          {{ selectedFile ? selectedFile.name : 'Attach file' }}
+          {{ selectedFile() ? selectedFile()!.name : 'Attach file' }}
           <input type="file" class="hidden" (change)="onFileSelected($event)" />
         </label>
-        <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || creating">
-          {{ creating ? 'Posting…' : 'Post' }}
+        <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || creating()">
+          {{ creating() ? 'Posting…' : 'Post' }}
         </button>
       </div>
       <mat-form-field appearance="outline" class="lg:col-span-4">
@@ -42,15 +42,15 @@
   </mat-card-content>
 </mat-card>
 
-@if (loading) {
+@if (loading()) {
   <div class="flex items-center justify-center py-20">
     <mat-spinner diameter="40" />
   </div>
-} @else if (assignments.length === 0) {
+} @else if (assignments().length === 0) {
   <app-empty-state icon="assignment" title="No assignments posted" message="Post your first assignment above." />
 } @else {
   <mat-accordion multi displayMode="flat" class="space-y-2">
-    @for (a of assignments; track a.id) {
+    @for (a of assignments(); track a.id) {
       <mat-expansion-panel>
         <mat-expansion-panel-header>
           <mat-panel-title class="!text-sm !font-medium">{{ a.title }}</mat-panel-title>

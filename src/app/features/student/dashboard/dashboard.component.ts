@@ -1,5 +1,5 @@
 import { NgClass, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -34,23 +34,23 @@ export class StudentDashboardComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
 
-  data: StudentDashboard | null = null;
-  loading = true;
+  readonly data = signal<StudentDashboard | null>(null);
+  readonly loading = signal(true);
 
   ngOnInit(): void {
     this.api.get<StudentDashboard>('/dashboard/summary').subscribe({
       next: (d) => {
-        this.data = d;
-        this.loading = false;
+        this.data.set(d);
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load your dashboard.');
       },
     });
   }
 
   upcomingCount(): number {
-    return this.data?.upcomingAssignments.filter((a) => !a.submitted).length ?? 0;
+    return this.data()?.upcomingAssignments.filter((a) => !a.submitted).length ?? 0;
   }
 }

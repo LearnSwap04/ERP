@@ -1,6 +1,6 @@
 <app-page-header title="Document Requests" subtitle="Review and approve student bonafide & transcript requests" />
 
-@if (loading) {
+@if (loading()) {
   <div class="flex items-center justify-center py-20">
     <mat-spinner diameter="40" />
   </div>
@@ -68,7 +68,7 @@
 
     <mat-tab label="Rejected">
       <div class="mt-4 space-y-3">
-        @for (r of requests; track r.id) {
+        @for (r of requests(); track r.id) {
           @if (r.status === 'REJECTED') {
             <mat-card class="!rounded-xl">
               <mat-card-content class="py-3">

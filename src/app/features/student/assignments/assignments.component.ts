@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -37,18 +37,18 @@ export class AssignmentsComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly auth = inject(AuthService);
 
-  assignments: Assignment[] = [];
-  loading = true;
-  submittingId: string | null = null;
+  readonly assignments = signal<Assignment[]>([]);
+  readonly loading = signal(true);
+  readonly submittingId = signal<string | null>(null);
 
   ngOnInit(): void {
     this.api.get<Assignment[]>('/assignments').subscribe({
       next: (d) => {
-        this.assignments = d;
-        this.loading = false;
+        this.assignments.set(d);
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load assignments.');
       },
     });
@@ -69,15 +69,15 @@ export class AssignmentsComponent implements OnInit {
     if (!file) return;
     const form = new FormData();
     form.append('file', file);
-    this.submittingId = a.id;
+    this.submittingId.set(a.id);
     this.api.postForm(`/assignments/${a.id}/submit`, form).subscribe({
       next: () => {
-        this.submittingId = null;
+        this.submittingId.set(null);
         this.toast.success('Assignment submitted.');
         this.ngOnInit();
       },
       error: () => {
-        this.submittingId = null;
+        this.submittingId.set(null);
       },
     });
     input.value = '';

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -34,9 +34,9 @@ export class FeesComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
 
-  ledger: FeeLedgerRow[] = [];
-  loading = true;
-  payingId: string | null = null;
+  readonly ledger = signal<FeeLedgerRow[]>([]);
+  readonly loading = signal(true);
+  readonly payingId = signal<string | null>(null);
 
   ngOnInit(): void {
     this.load();
@@ -45,26 +45,26 @@ export class FeesComponent implements OnInit {
   private load(): void {
     this.api.get<FeeLedgerRow[]>('/fees/my').subscribe({
       next: (d) => {
-        this.ledger = d;
-        this.loading = false;
+        this.ledger.set(d);
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load your fee ledger.');
       },
     });
   }
 
   pay(row: FeeLedgerRow): void {
-    this.payingId = row.item.id;
+    this.payingId.set(row.item.id);
     this.api.post('/fees/pay', { itemId: row.item.id }).subscribe({
       next: () => {
-        this.payingId = null;
+        this.payingId.set(null);
         this.toast.success('Payment recorded.');
         this.load();
       },
       error: () => {
-        this.payingId = null;
+        this.payingId.set(null);
       },
     });
   }
@@ -84,6 +84,6 @@ export class FeesComponent implements OnInit {
   }
 
   totalDue(): number {
-    return this.ledger.filter((r) => r.status !== 'PAID').reduce((s, r) => s + r.item.amount, 0);
+    return this.ledger().filter((r) => r.status !== 'PAID').reduce((s, r) => s + r.item.amount, 0);
   }
 }

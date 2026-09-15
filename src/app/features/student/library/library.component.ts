@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
@@ -37,15 +37,15 @@ export class LibraryComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
 
-  books: Book[] = [];
-  issues: BookIssue[] = [];
-  loading = true;
+  readonly books = signal<Book[]>([]);
+  readonly issues = signal<BookIssue[]>([]);
+  readonly loading = signal(true);
   query = '';
 
   ngOnInit(): void {
     this.loadBooks();
     this.api.get<BookIssue[]>('/library/my').subscribe({
-      next: (d) => (this.issues = d),
+      next: (d) => this.issues.set(d),
       error: () => void 0,
     });
   }
@@ -54,18 +54,18 @@ export class LibraryComponent implements OnInit {
     const path = q ? `/library/books?q=${encodeURIComponent(q)}` : '/library/books';
     this.api.get<Book[]>(path).subscribe({
       next: (d) => {
-        this.books = d;
-        this.loading = false;
+        this.books.set(d);
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load the library catalog.');
       },
     });
   }
 
   search(): void {
-    this.loading = true;
+    this.loading.set(true);
     this.loadBooks(this.query.trim());
   }
 

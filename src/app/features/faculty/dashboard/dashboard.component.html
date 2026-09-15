@@ -1,10 +1,10 @@
 <app-page-header title="Faculty Dashboard" subtitle="Your classes, pending work and the latest notices" />
 
-@if (loading) {
+@if (loading()) {
   <div class="flex items-center justify-center py-20">
     <mat-spinner diameter="40" />
   </div>
-} @else if (data) {
+} @else if (data(); as data) {
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
     <app-stat-card label="Subjects taught" [value]="data.subjects.length" icon="menu_book" tone="primary" />
     <app-stat-card label="Pending submissions" [value]="data.pendingSubmissions" icon="assignment" tone="warn" />

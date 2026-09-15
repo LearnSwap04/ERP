@@ -6,7 +6,7 @@
       <mat-form-field appearance="outline" class="min-w-64">
         <mat-label>Subject</mat-label>
         <mat-select [(ngModel)]="selectedSubjectId" (ngModelChange)="loadRoster()">
-          @for (s of subjects; track s.id) {
+          @for (s of subjects(); track s.id) {
             <mat-option [value]="s.id">{{ s.code }} — {{ s.name }} (Sem {{ s.semester }})</mat-option>
           }
         </mat-select>
@@ -20,9 +20,9 @@
       </mat-form-field>
 
       <div class="ml-auto flex items-center gap-2">
-        <button mat-stroked-button color="primary" (click)="setAll('PRESENT')" [disabled]="!roster">Mark all present</button>
-        <button mat-raised-button color="primary" (click)="save()" [disabled]="!roster || saving || markedCount() === 0">
-          @if (saving) {
+        <button mat-stroked-button color="primary" (click)="setAll('PRESENT')" [disabled]="!roster()">Mark all present</button>
+        <button mat-raised-button color="primary" (click)="save()" [disabled]="!roster() || saving() || markedCount() === 0">
+          @if (saving()) {
             <span>Saving…</span>
           } @else {
             <span>Save attendance</span>
@@ -37,11 +37,11 @@
   <div class="mt-6">
     <app-empty-state icon="fact_check" title="Pick a subject" message="Choose a subject and date to load the class roster." />
   </div>
-} @else if (loadingRoster) {
+} @else if (loadingRoster()) {
   <div class="flex items-center justify-center py-20">
     <mat-spinner diameter="40" />
   </div>
-} @else if (roster) {
+} @else if (roster(); as roster) {
   <mat-card class="mt-6 !rounded-xl">
     <mat-card-header>
       <mat-card-title class="!text-base">Class of {{ roster.students.length }} students</mat-card-title>

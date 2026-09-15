@@ -1,10 +1,10 @@
 <app-page-header title="Notices" subtitle="Announcements from the administration" />
 
-@if (loading) {
+@if (loading()) {
   <div class="flex items-center justify-center py-20">
     <mat-spinner diameter="40" />
   </div>
-} @else if (notices.length === 0 && activeCategory === 'ALL') {
+} @else if (notices().length === 0 && activeCategory === 'ALL') {
   <app-empty-state icon="campaign" title="No notices yet" message="Check back later for announcements." />
 } @else {
   <div class="mx-auto max-w-3xl">
@@ -23,7 +23,7 @@
       }
     </div>
 
-    @if (notices.length === 0) {
+    @if (notices().length === 0) {
       <app-empty-state
         icon="filter_alt_off"
         title="No notices in this category"
@@ -32,7 +32,7 @@
     }
 
     <div class="space-y-4">
-      @for (notice of notices; track notice.id) {
+      @for (notice of notices(); track notice.id) {
       <mat-card class="!rounded-xl">
         <mat-card-header>
           <mat-icon mat-card-avatar [fontIcon]="iconFor(notice.category)" class="!text-blue-600" />

@@ -2,11 +2,12 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDividerModule } from '@angular/material/divider';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
 
@@ -18,11 +19,12 @@ type DemoRole = 'student' | 'faculty' | 'admin';
   imports: [
     ReactiveFormsModule,
     RouterLink,
-    MatCardModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
     MatIconModule,
+    MatProgressSpinnerModule,
+    MatDividerModule,
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
@@ -41,6 +43,12 @@ export class LoginComponent {
 
   readonly loading = signal(false);
   hidePassword = true;
+
+  readonly features = [
+    { icon: 'calendar_month', label: 'Timetable & exam schedule at a glance' },
+    { icon: 'campaign', label: 'Notices and announcements, categorized' },
+    { icon: 'fact_check', label: 'Grades, attendance and syllabus tracking' },
+  ];
 
   onSubmit(): void {
     if (this.form.invalid) return;

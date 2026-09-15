@@ -33,18 +33,18 @@ export class DocumentsComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
 
-  requests: DocumentRequest[] = [];
-  loading = true;
+  readonly requests = signal<DocumentRequest[]>([]);
+  readonly loading = signal(true);
   actingId = signal<string | null>(null);
 
   ngOnInit(): void {
     this.api.get<DocumentRequest[]>('/documents/requests').subscribe({
       next: (d) => {
-        this.requests = d;
-        this.loading = false;
+        this.requests.set(d);
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load document requests.');
       },
     });
@@ -63,7 +63,7 @@ export class DocumentsComponent implements OnInit {
   }
 
   private filter(status: string): DocumentRequest[] {
-    return this.requests.filter((r) => r.status === status);
+    return this.requests().filter((r) => r.status === status);
   }
 
   pending(): DocumentRequest[] {

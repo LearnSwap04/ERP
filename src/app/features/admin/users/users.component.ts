@@ -44,9 +44,9 @@ export class UsersComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
 
-  users: AuthUser[] = [];
-  loading = true;
-  creating = false;
+  readonly users = signal<AuthUser[]>([]);
+  readonly loading = signal(true);
+  readonly creating = signal(false);
   filterRole = signal<string>('');
   editingId = signal<string | null>(null);
 
@@ -78,11 +78,11 @@ export class UsersComponent implements OnInit {
     if (r) params['role'] = r;
     this.api.get<AuthUser[]>('/users', params).subscribe({
       next: (d) => {
-        this.users = d;
-        this.loading = false;
+        this.users.set(d);
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load users.');
       },
     });
@@ -90,14 +90,16 @@ export class UsersComponent implements OnInit {
 
   filter(role: string): void {
     this.filterRole.set(role);
-    this.loading = true;
+    this.loading.set(true);
     this.loadUsers();
   }
 
   toggleActive(user: AuthUser): void {
     this.api.put(`/users/${user.id}`, { isActive: !user.isActive }).subscribe({
       next: () => {
-        user.isActive = !user.isActive;
+        this.users.update((arr) =>
+          arr.map((u) => (u.id === user.id ? { ...u, isActive: !u.isActive } : u)),
+        );
         this.toast.success(`User ${user.isActive ? 'activated' : 'deactivated'}.`);
       },
       error: () => void 0,
@@ -137,16 +139,16 @@ export class UsersComponent implements OnInit {
         error: () => void 0,
       });
     } else {
-      this.creating = true;
+      this.creating.set(true);
       this.api.post('/users', v).subscribe({
         next: () => {
-          this.creating = false;
+          this.creating.set(false);
           this.form.reset({ name: '', email: '', password: '', role: 'STUDENT', phone: '' });
           this.toast.success('User created.');
           this.loadUsers();
         },
         error: () => {
-          this.creating = false;
+          this.creating.set(false);
         },
       });
     }

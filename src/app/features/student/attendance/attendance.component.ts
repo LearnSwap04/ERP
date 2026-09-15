@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -49,20 +49,20 @@ export class AttendanceComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
 
-  my: MyAttendance | null = null;
-  bunk: { threshold: number; rows: BunkRow[] } | null = null;
-  loading = true;
+  readonly my = signal<MyAttendance | null>(null);
+  readonly bunk = signal<{ threshold: number; rows: BunkRow[] } | null>(null);
+  readonly loading = signal(true);
 
-  attendanceData: ChartData<'doughnut'> = { labels: [], datasets: [{ data: [] }] };
-  attendanceOptions: ChartOptions<'doughnut'> = { responsive: true, maintainAspectRatio: false };
+  readonly attendanceData = signal<ChartData<'doughnut'>>({ labels: [], datasets: [{ data: [] }] });
+  readonly attendanceOptions: ChartOptions<'doughnut'> = { responsive: true, maintainAspectRatio: false };
 
   ngOnInit(): void {
     this.api.get<MyAttendance>('/attendance/my').subscribe({
       next: (d) => {
-        this.my = d;
-        this.loading = false;
+        this.my.set(d);
+        this.loading.set(false);
         const o = d.overall;
-        this.attendanceData = {
+        this.attendanceData.set({
           labels: ['Present', 'Absent', 'Leave'],
           datasets: [
             {
@@ -70,15 +70,15 @@ export class AttendanceComponent implements OnInit {
               backgroundColor: ['#10b981', '#f87171', '#fbbf24'],
             },
           ],
-        };
+        });
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load attendance.');
       },
     });
     this.api.get<{ threshold: number; rows: BunkRow[] }>('/attendance/bunk').subscribe({
-      next: (d) => (this.bunk = d),
+      next: (d) => (this.bunk.set(d)),
       error: () => void 0,
     });
   }

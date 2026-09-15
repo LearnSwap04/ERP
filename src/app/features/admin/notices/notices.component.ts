@@ -40,9 +40,9 @@ export class NoticesComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
 
-  notices: Notice[] = [];
-  loading = true;
-  creating = false;
+  readonly notices = signal<Notice[]>([]);
+  readonly loading = signal(true);
+  readonly creating = signal(false);
   editingId = signal<string | null>(null);
 
   readonly form = this.fb.group({
@@ -58,11 +58,11 @@ export class NoticesComponent implements OnInit {
   private loadNotices(): void {
     this.api.get<Notice[]>('/notices').subscribe({
       next: (d) => {
-        this.notices = d;
-        this.loading = false;
+        this.notices.set(d);
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load notices.');
       },
     });
@@ -93,16 +93,16 @@ export class NoticesComponent implements OnInit {
         error: () => void 0,
       });
     } else {
-      this.creating = true;
+      this.creating.set(true);
       this.api.post('/notices', v).subscribe({
         next: () => {
-          this.creating = false;
+          this.creating.set(false);
           this.form.reset({ title: '', body: '', category: 'GENERAL' });
           this.toast.success('Notice posted.');
           this.loadNotices();
         },
         error: () => {
-          this.creating = false;
+          this.creating.set(false);
         },
       });
     }

@@ -45,10 +45,10 @@ export class FeesComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
 
-  items: FeeItem[] = [];
-  payments: Payment[] = [];
-  loading = true;
-  creating = false;
+  readonly items = signal<FeeItem[]>([]);
+  readonly payments = signal<Payment[]>([]);
+  readonly loading = signal(true);
+  readonly creating = signal(false);
 
   readonly itemForm = this.fb.group({
     title: this.fb.nonNullable.control('', [Validators.required]),
@@ -62,16 +62,16 @@ export class FeesComponent implements OnInit {
   ngOnInit(): void {
     this.api.get<FeeItem[]>('/fees/structure').subscribe({
       next: (d) => {
-        this.items = d;
-        this.loading = false;
+        this.items.set(d);
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load fee structure.');
       },
     });
     this.api.get<Payment[]>('/fees/payments').subscribe({
-      next: (d) => (this.payments = d),
+      next: (d) => this.payments.set(d),
       error: () => void 0,
     });
   }
@@ -80,7 +80,7 @@ export class FeesComponent implements OnInit {
     if (this.itemForm.invalid) return;
     const v = this.itemForm.getRawValue();
     const dueDate = v.dueDate instanceof Date ? v.dueDate.toISOString().slice(0, 10) : v.dueDate;
-    this.creating = true;
+    this.creating.set(true);
     this.api
       .post('/fees/structure', {
         title: v.title,
@@ -92,7 +92,7 @@ export class FeesComponent implements OnInit {
       })
       .subscribe({
         next: () => {
-          this.creating = false;
+          this.creating.set(false);
           this.itemForm.reset({
             title: '',
             course: 'B.Tech',
@@ -105,7 +105,7 @@ export class FeesComponent implements OnInit {
           this.ngOnInit();
         },
         error: () => {
-          this.creating = false;
+          this.creating.set(false);
         },
       });
   }

@@ -333,6 +333,358 @@ async function main() {
   });
   await prisma.ticketMessage.create({ data: { ticketId: ticket2.id, authorId: facultyUserIds[0]!, body: 'We will review your internal assessment. Expected resolution in 3 days.' } });
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // DEMO-DATA ENRICHMENT: give every section enough realistic content to demo.
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // Deterministic pseudo-random so re-runs are stable.
+  const rnd = (n: number) => Math.floor(((n * 2654435761) % 2147483648) / 2147483648 * 1e6) % n;
+
+  // ---- Notices: a fuller feed spread over the last ~5 weeks ----
+  const extraNotices: Array<{ title: string; body: string; category: 'EXAM' | 'EVENT' | 'HOLIDAY' | 'GENERAL'; daysAgo: number }> = [
+    { title: 'End-Semester Timetable Posted', body: 'Official end-semester exam timetable for all branches is now available under Academics.', category: 'EXAM', daysAgo: 2 },
+    { title: 'Guest Lecture: Systems Design', body: 'A guest lecture on large-scale system design by an industry alum this Thursday at the main auditorium.', category: 'EVENT', daysAgo: 5 },
+    { title: 'Coding Club: Competitive Programming', body: 'Weekly CP practice rounds restart from Monday. No prior experience required.', category: 'EVENT', daysAgo: 7 },
+    { title: 'Mid-Term Internal Grades Released', body: 'Internal-1 grades for Semester 3 are visible on the Grades page.', category: 'EXAM', daysAgo: 10 },
+    { title: 'Library Timings Update', body: 'The central library now stays open until 10 PM on weekdays during the semester.', category: 'GENERAL', daysAgo: 12 },
+    { title: 'Placement Orientation ', body: 'Final-year students invited to the pre-placement talk — registrations open on the portal.', category: 'EVENT', daysAgo: 16 },
+    { title: 'Department Seminar on AI', body: 'CS department seminar on applied machine learning in databases. Attendance encouraged.', category: 'EVENT', daysAgo: 20 },
+    { title: 'Holiday Declaration', body: 'Institute holiday on the occasion of the state foundation day next week.', category: 'HOLIDAY', daysAgo: 24 },
+    { title: 'Fee Concession Window', body: 'Eligible students may apply for fee concession before the end of this month.', category: 'GENERAL', daysAgo: 28 },
+    { title: 'Hostel Wi-Fi Upgrade', body: 'Planned network maintenance this weekend. Expect brief downtime in hostels.', category: 'GENERAL', daysAgo: 32 },
+  ];
+  for (const [ni, n] of extraNotices.entries()) {
+    await prisma.notice.create({
+      data: {
+        title: n.title,
+        body: n.body,
+        category: n.category,
+        postedById: ni % 2 === 0 ? admin.id : facultyUserIds[ni % facultyUserIds.length]!,
+        createdAt: daysFromToday(-n.daysAgo),
+      },
+    });
+  }
+
+  // ---- Internal-2 exams + marks (richer grade card & exam list) ----
+  for (const sub of subjects) {
+    const exam = await prisma.exam.create({
+      data: {
+        name: `${sub.code} Internal-2`,
+        type: 'INTERNAL',
+        course: COURSE,
+        branch: BRANCH,
+        semester: SEMESTER,
+        subjectId: sub.id,
+        date: daysFromToday(-22),
+        maxMarks: 25,
+      },
+    });
+    for (const s of students) {
+      const obtained = 14 + rnd(s.index * 31 + sub.index * 7 + 5); // 14..38 → clamp to max
+      await prisma.marks.create({
+        data: { studentId: s.user.id, examId: exam.id, obtained: Math.min(obtained, 25) },
+      });
+    }
+  }
+
+  // ---- Extra assignments (mix of upcoming + one recently closed) ----
+  const moreAssignments: Array<{ subjectIdx: number; title: string; description: string; dueDays: number }> = [
+    { subjectIdx: 1, title: 'Graph Algorithms Problem Set', description: 'Solve shortest-path and MST problems with complexity notes.', dueDays: 4 },
+    { subjectIdx: 4, title: 'Requirements Document Draft', description: 'Draft an SRS for a hostel management system.', dueDays: 9 },
+    { subjectIdx: 2, title: 'Deadlock Simulation Lab', description: 'Simulate Banker’s algorithm and report deadlock outcomes.', dueDays: 13 },
+    { subjectIdx: 3, title: 'Network Simulation Report', description: 'Model a small LAN in a simulator and document throughput.', dueDays: 16 },
+    { subjectIdx: 5, title: 'Combinatorics Worksheet', description: 'Worked solutions for permutations, combinations and recurrences.', dueDays: 3 },
+    { subjectIdx: 0, title: 'SQL Query Optimization', description: 'Analyze query plans and rewrite slow queries for the sample dataset.', dueDays: 21 },
+    { subjectIdx: 1, title: 'Huffman Coding Extra Credit', description: 'Implement Huffman encoding and compare compression ratios.', dueDays: -6 },
+  ];
+  const extraAssignmentIds: string[] = [];
+  for (const def of moreAssignments) {
+    const subject = subjects[def.subjectIdx]!;
+    const a = await prisma.assignment.create({
+      data: {
+        subjectId: subject.id,
+        facultyId: subject.facultyId,
+        title: def.title,
+        description: def.description,
+        dueDate: daysFromToday(def.dueDays),
+      },
+    });
+    extraAssignmentIds.push(a.id);
+  }
+
+  // ---- Submissions: every assignment gets a realistic mix ----
+  for (const [ai, aid] of [...assignmentIds, ...extraAssignmentIds].entries()) {
+    const submitterCount = 4 + (ai % 3); // 4..6 students per assignment
+    const graded = ['Great work!', 'Good attempt, minor gaps in Q3.', 'Solid analysis.', 'Header formatting fix needed.', 'Nice edge-case coverage.'];
+    for (let i = 0; i < submitterCount; i++) {
+      const studentIdx = (ai * 3 + i) % students.length;
+      const existing = await prisma.submission.findUnique({
+        where: { assignmentId_studentId: { assignmentId: aid, studentId: students[studentIdx]!.user.id } },
+      });
+      if (existing) continue;
+      const isGraded = i % 2 === 0; // roughly half graded
+      const posted = new Date(rnd(9) + 1);
+      await prisma.submission.create({
+        data: {
+          assignmentId: aid,
+          studentId: students[studentIdx]!.user.id,
+          fileUrl: `/uploads/assignment-${ai}-student-${studentIdx}.pdf`,
+          submittedAt: daysFromToday(-posted),
+          grade: isGraded ? 55 + (rnd(studentIdx * 13 + ai * 5 + 30) % 30) : null, // 55..84
+          feedback: isGraded ? graded[rnd(studentIdx + ai) % graded.length] : null,
+        },
+      });
+    }
+  }
+
+  // ---- Documents: give students & admin a populated queue ----
+  const docSeed: Array<{ studentIdx: number; type: 'BONAFIDE' | 'TRANSCRIPT'; status: 'PENDING' | 'APPROVED' | 'REJECTED'; note?: string; daysAgo: number }> = [
+    { studentIdx: 0, type: 'BONAFIDE', status: 'APPROVED', note: 'Scholarship application proof.', daysAgo: 12 },
+    { studentIdx: 0, type: 'TRANSCRIPT', status: 'PENDING', note: 'For higher studies application.', daysAgo: 2 },
+    { studentIdx: 1, type: 'BONAFIDE', status: 'APPROVED', note: 'Bank loan verification.', daysAgo: 20 },
+    { studentIdx: 1, type: 'TRANSCRIPT', status: 'APPROVED', note: 'Exchange program application.', daysAgo: 8 },
+    { studentIdx: 2, type: 'TRANSCRIPT', status: 'REJECTED', note: 'Incomplete marksheet — resubmit.', daysAgo: 15 },
+    { studentIdx: 3, type: 'BONAFIDE', status: 'PENDING', note: 'Government ID address proof.', daysAgo: 3 },
+    { studentIdx: 4, type: 'TRANSCRIPT', status: 'APPROVED', note: 'GATE application document.', daysAgo: 30 },
+    { studentIdx: 5, type: 'BONAFIDE', status: 'PENDING', note: 'Hostel concession form.', daysAgo: 1 },
+    { studentIdx: 6, type: 'TRANSCRIPT', status: 'PENDING', note: 'Job application transcript.', daysAgo: 4 },
+    { studentIdx: 7, type: 'BONAFIDE', status: 'APPROVED', note: 'Voter ID address proof.', daysAgo: 25 },
+  ];
+  for (const d of docSeed) {
+    await prisma.documentRequest.create({
+      data: {
+        studentId: students[d.studentIdx]!.user.id,
+        type: d.type,
+        status: d.status,
+        note: d.note,
+        requestedAt: daysFromToday(-d.daysAgo),
+        processedAt: d.status === 'PENDING' ? null : daysFromToday(-(d.daysAgo - 2)),
+        fileUrl: d.status === 'APPROVED' ? `/uploads/documents/${d.type.toLowerCase()}-${d.studentIdx}.pdf` : null,
+      },
+    });
+  }
+
+  // ---- Communication: tickets for every student with message threads ----
+  const ticketSeed: Array<{ studentIdx: number; subject: string; description: string; status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED'; daysAgo: number }> = [
+    { studentIdx: 0, subject: 'Bonafide certificate status', description: 'Requested last week, do I need to upload anything else?', status: 'RESOLVED', daysAgo: 9 },
+    { studentIdx: 2, subject: 'Hall ticket not visible', description: 'End-sem hall ticket is not appearing on my profile.', status: 'IN_PROGRESS', daysAgo: 2 },
+    { studentIdx: 3, subject: 'Wi-Fi credentials reset', description: 'Unable to connect to campus Wi-Fi after hostel change.', status: 'OPEN', daysAgo: 1 },
+    { studentIdx: 4, subject: 'Attendance correction request', description: 'I missed one class because of the medical leave; can it be adjusted?', status: 'OPEN', daysAgo: 4 },
+    { studentIdx: 5, subject: 'Library fine dispute', description: 'I returned the book on time but a fine was added.', status: 'IN_PROGRESS', daysAgo: 7 },
+    { studentIdx: 6, subject: 'Fee receipt copy', description: 'Need a copy of the tuition fee receipt for reimbursement.', status: 'RESOLVED', daysAgo: 13 },
+    { studentIdx: 7, subject: 'Roll number change request', description: 'Typo in the printed roll number on my ID card.', status: 'OPEN', daysAgo: 2 },
+  ];
+  const staffReplies = [
+    'That has been completed — please check the Documents page.',
+    'We are on it; you will get an update by the end of the day.',
+    'Logged. Our team will reach out shortly.',
+    'Kindly attach a copy of the medical certificate to the ticket.',
+    'Checked and resolved — the fine has been waived.',
+    'Your receipt is available under Fee Receipts now.',
+    'Raised to the exam cell for correction.',
+  ];
+  for (const [ti, t] of ticketSeed.entries()) {
+    const resolver = t.status === 'RESOLVED' ? admin.id : facultyUserIds[ti % facultyUserIds.length]!;
+    const ticket = await prisma.ticket.create({
+      data: {
+        studentId: students[t.studentIdx]!.user.id,
+        subject: t.subject,
+        description: t.description,
+        status: t.status,
+        assignedToId: t.status === 'OPEN' ? null : resolver,
+        createdAt: daysFromToday(-t.daysAgo),
+        updatedAt: daysFromToday(-Math.max(0, t.daysAgo - 1)),
+      },
+    });
+    await prisma.ticketMessage.create({
+      data: { ticketId: ticket.id, authorId: students[t.studentIdx]!.user.id, body: t.description, createdAt: daysFromToday(-t.daysAgo) },
+    });
+    if (t.status !== 'OPEN') {
+      await prisma.ticketMessage.create({
+        data: { ticketId: ticket.id, authorId: resolver, body: staffReplies[ti % staffReplies.length]!, createdAt: daysFromToday(-Math.max(0, t.daysAgo - 1)) },
+      });
+    }
+    if (t.status === 'RESOLVED') {
+      await prisma.ticketMessage.create({
+        data: { ticketId: ticket.id, authorId: students[t.studentIdx]!.user.id, body: 'Thank you, issue resolved.', createdAt: daysFromToday(-Math.max(0, t.daysAgo - 2)) },
+      });
+    }
+  }
+
+  // ---- Timetable: a fuller teaching week (Mon–Sat) ----
+  const weekSlots: Array<{ subjectIdx: number; day: number; start: string; end: string; room: string }> = [
+    { subjectIdx: 4, day: 0, start: '10:00', end: '11:00', room: 'Basement-2' },
+    { subjectIdx: 2, day: 0, start: '14:00', end: '15:00', room: 'Online Lab' },
+    { subjectIdx: 0, day: 1, start: '11:00', end: '12:00', room: 'Basement-1' },
+    { subjectIdx: 3, day: 1, start: '14:00', end: '15:00', room: 'Basement-2' },
+    { subjectIdx: 5, day: 1, start: '09:00', end: '10:00', room: 'Online Lab' },
+    { subjectIdx: 0, day: 2, start: '11:00', end: '12:00', room: 'Basement-2' },
+    { subjectIdx: 1, day: 2, start: '14:00', end: '15:00', room: 'Online Lab' },
+    { subjectIdx: 3, day: 2, start: '10:00', end: '11:00', room: 'Basement-1' },
+    { subjectIdx: 1, day: 3, start: '10:00', end: '11:00', room: 'Basement-2' },
+    { subjectIdx: 4, day: 3, start: '11:00', end: '12:00', room: 'Online Lab' },
+    { subjectIdx: 5, day: 3, start: '14:00', end: '15:00', room: 'Basement-1' },
+    { subjectIdx: 1, day: 4, start: '11:00', end: '12:00', room: 'Basement-2' },
+    { subjectIdx: 2, day: 4, start: '14:00', end: '15:00', room: 'Online Lab' },
+    { subjectIdx: 3, day: 4, start: '10:00', end: '11:00', room: 'Basement-1' },
+    { subjectIdx: 0, day: 5, start: '09:00', end: '10:00', room: 'Basement-1' },
+    { subjectIdx: 5, day: 5, start: '11:00', end: '12:00', room: 'Online Lab' },
+  ];
+  for (const w of weekSlots) {
+    const existing = await prisma.timetableSlot.findFirst({
+      where: { subjectId: subjects[w.subjectIdx]!.id, dayOfWeek: w.day, startTime: w.start, endTime: w.end },
+    });
+    if (existing) continue;
+    await prisma.timetableSlot.create({
+      data: {
+        subjectId: subjects[w.subjectIdx]!.id,
+        branch: BRANCH,
+        semester: SEMESTER,
+        dayOfWeek: w.day,
+        startTime: w.start,
+        endTime: w.end,
+        room: w.room,
+      },
+    });
+  }
+
+  // ---- Syllabus: extend to a fuller unit list ----
+  const moreUnits: Array<{ title: string; status: 'COVERED' | 'PENDING'; coveredDaysAgo?: number }> = [
+    { title: 'Unit 4', status: 'COVERED', coveredDaysAgo: 5 },
+    { title: 'Unit 5', status: 'PENDING' },
+  ];
+  for (const sub of subjects) {
+    for (const [ui, unit] of moreUnits.entries()) {
+      await prisma.syllabusTopic.create({
+        data: {
+          subjectId: sub.id,
+          title: `${sub.code} ${unit.title}`,
+          status: unit.status,
+          coveredOn: unit.status === 'COVERED' ? daysFromToday(-unit.coveredDaysAgo!) : null,
+        },
+      });
+    }
+  }
+
+  // ---- Library: a few more titles + issues with consistent availability ----
+  const extraBooks: Array<{ title: string; author: string; isbn: string; copies: number }> = [
+    { title: 'Designing Data-Intensive Applications', author: 'Martin Kleppmann', isbn: '978-1449373320', copies: 3 },
+    { title: 'Introduction to Algorithms', author: 'Thomas H. Cormen', isbn: '978-0262033848', copies: 4 },
+    { title: 'Clean Architecture', author: 'Robert C. Martin', isbn: '978-0134494166', copies: 2 },
+    { title: 'Computer Organization and Design', author: 'David A. Patterson', isbn: '978-0124077263', copies: 3 },
+    { title: 'The Pragmatic Programmer', author: 'Andrew Hunt', isbn: '978-0201616224', copies: 2 },
+  ];
+  const allBooks = [...createdBooks];
+  for (const b of extraBooks) {
+    allBooks.push(
+      await prisma.book.create({
+        data: { title: b.title, author: b.author, isbn: b.isbn, totalCopies: b.copies, available: b.copies },
+      }),
+    );
+  }
+  const issueSeed: Array<{ bookIdx: number; studentIdx: number; dueDays: number; returnedDaysAgo?: number; fine?: number }> = [
+    { bookIdx: 3, studentIdx: 0, dueDays: 12 },
+    { bookIdx: 4, studentIdx: 1, dueDays: 18 },
+    { bookIdx: 6, studentIdx: 2, dueDays: 9 },
+    { bookIdx: 7, studentIdx: 3, dueDays: 15 },
+    { bookIdx: 8, studentIdx: 4, dueDays: 7 },
+    { bookIdx: 9, studentIdx: 5, dueDays: -1, fine: 10 },
+    { bookIdx: 10, studentIdx: 6, dueDays: 21 },
+    { bookIdx: 6, studentIdx: 7, dueDays: 5 },
+    { bookIdx: 9, studentIdx: 0, dueDays: 20, returnedDaysAgo: 3, fine: 0 },
+    { bookIdx: 7, studentIdx: 2, dueDays: 11, returnedDaysAgo: 6, fine: 20 },
+  ];
+  const activeIssues = new Map<number, number>(); // bookIdx -> active count (excludes returned)
+  for (const is of issueSeed) {
+    await prisma.bookIssue.create({
+      data: {
+        bookId: allBooks[is.bookIdx]!.id,
+        studentId: students[is.studentIdx]!.user.id,
+        issuedAt: daysFromToday(-(is.dueDays + 7)),
+        dueDate: daysFromToday(is.dueDays),
+        returnedAt: is.returnedDaysAgo !== undefined ? daysFromToday(-is.returnedDaysAgo) : null,
+        fine: is.fine ?? null,
+      },
+    });
+    if (is.returnedDaysAgo !== undefined) continue;
+    activeIssues.set(is.bookIdx, (activeIssues.get(is.bookIdx) ?? 0) + 1);
+  }
+  // Reconcile availability so the library table matches active issues.
+  for (const [bi, book] of allBooks.entries()) {
+    const active = activeIssues.get(bi) ?? 0;
+    if (book.available !== book.totalCopies - active) {
+      await prisma.book.update({
+        where: { id: book.id },
+        data: { available: book.totalCopies - active },
+      });
+    }
+  }
+  void weekSlots;
+
+  // ---- Fees: one more structure item + a fuller per-student ledger ----
+  const sportsFee = await prisma.feeStructureItem.create({
+    data: { title: 'Sports & Cultural Fee', course: COURSE, branch: BRANCH, semester: SEMESTER, amount: 5000, dueDate: daysFromToday(5) },
+  });
+  const allItems = [...createdItems, sportsFee];
+  const paymentSeed: Array<{ itemIdx: number; studentIdx: number; status: 'PAID' | 'PENDING'; daysAgo?: number }> = [];
+  // Lab fee: paid by students 0-3, pending 4-5.
+  for (let i = 0; i <= 5; i++) paymentSeed.push({ itemIdx: 1, studentIdx: i, status: i <= 3 ? 'PAID' : 'PENDING', daysAgo: i <= 3 ? 18 - i : undefined });
+  // Hostel fee: paid by students 0-2, pending 3-4.
+  for (let i = 0; i <= 4; i++) paymentSeed.push({ itemIdx: 3, studentIdx: i, status: i <= 2 ? 'PAID' : 'PENDING', daysAgo: i <= 2 ? 15 - i : undefined });
+  // Exam fee: paid 0-5 (student 5 newly), pending 6, unpaid 7.
+  for (let i = 0; i <= 6; i++) {
+    if (i === 7) continue;
+    const exists = i <= 2; // students 0-2 already paid exam fee above
+    if (!exists) paymentSeed.push({ itemIdx: 2, studentIdx: i, status: i === 6 ? 'PENDING' : 'PAID', daysAgo: i === 6 ? undefined : 5 });
+  }
+  // Sports fee: pending for student 1 (so the demo shows a payable row), paid for 2-3.
+  for (let i = 1; i <= 3; i++) paymentSeed.push({ itemIdx: 4, studentIdx: i, status: i === 1 ? 'PENDING' : 'PAID', daysAgo: i === 1 ? undefined : 2 });
+  // Tuition for student 7 (currently unpaid).
+  await prisma.payment.create({ data: { studentId: students[7]!.user.id, itemId: allItems[0]!.id, amount: allItems[0]!.amount, status: 'PENDING' } });
+  for (const p of paymentSeed) {
+    const exists = await prisma.payment.findUnique({
+      where: { studentId_itemId: { studentId: students[p.studentIdx]!.user.id, itemId: allItems[p.itemIdx]!.id } },
+    });
+    if (exists) continue;
+    await prisma.payment.create({
+      data: {
+        studentId: students[p.studentIdx]!.user.id,
+        itemId: allItems[p.itemIdx]!.id,
+        amount: allItems[p.itemIdx]!.amount,
+        status: p.status,
+        paidAt: p.status === 'PAID' ? daysFromToday(-(p.daysAgo ?? 5)) : null,
+      },
+    });
+  }
+
+  // ---- Attendance: a few recent classes so the last week looks live ----
+  const recentDates = [
+    { dayOffset: -1, presentPattern: 6 },
+    { dayOffset: -3, presentPattern: 5 },
+    { dayOffset: -5, presentPattern: 4 },
+  ];
+  for (const s of students) {
+    for (const sub of subjects) {
+      for (const rd of recentDates) {
+        const already = await prisma.attendanceRecord.findUnique({
+          where: { studentId_subjectId_date: { studentId: s.user.id, subjectId: sub.id, date: daysFromToday(rd.dayOffset) } },
+        });
+        if (already) continue;
+        const absentForSubject = (s.index + sub.index) % 3 === 0;
+        const status = absentForSubject ? 'ABSENT' : 'PRESENT';
+        await prisma.attendanceRecord.create({
+          data: {
+            studentId: s.user.id,
+            subjectId: sub.id,
+            date: daysFromToday(rd.dayOffset),
+            status: status as 'PRESENT' | 'ABSENT' | 'LEAVE',
+            markedById: sub.facultyId,
+          },
+        });
+      }
+    }
+  }
+
   console.log('Seeded ERP database.');
   console.log('  Admin:   admin@erp.test');
   for (let i = 0; i < 2; i++) console.log(`  Faculty: faculty${i + 1}@erp.test`);

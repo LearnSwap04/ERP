@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -32,11 +32,11 @@ export class GradesComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
 
-  gradeCard: GradeCard | null = null;
-  loading = true;
+  readonly gradeCard = signal<GradeCard | null>(null);
+  readonly loading = signal(true);
 
-  trendData: ChartData<'line'> = { labels: [], datasets: [{ data: [] }] };
-  trendOptions: ChartOptions<'line'> = {
+  readonly trendData = signal<ChartData<'line'>>({ labels: [], datasets: [{ data: [] }] });
+  readonly trendOptions: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: { legend: { display: false } },
@@ -46,9 +46,9 @@ export class GradesComponent implements OnInit {
   ngOnInit(): void {
     this.api.get<GradeCard>('/grades/my').subscribe({
       next: (d) => {
-        this.gradeCard = d;
-        this.loading = false;
-        this.trendData = {
+        this.gradeCard.set(d);
+        this.loading.set(false);
+        this.trendData.set({
           labels: d.trend.map((t) => `Sem ${t.semester}`),
           datasets: [
             {
@@ -60,10 +60,10 @@ export class GradesComponent implements OnInit {
               pointRadius: 5,
             },
           ],
-        };
+        });
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load grades.');
       },
     });

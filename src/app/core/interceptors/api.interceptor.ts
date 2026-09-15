@@ -39,7 +39,9 @@ export const apiInterceptor: HttpInterceptorFn = (req, next) => {
         );
       }
 
-      if (err.status === 403) {
+      if (err.status === 0) {
+        toast.error('Cannot reach the server. Is the backend running?');
+      } else if (err.status === 403) {
         toast.error(err.error?.error ?? 'You do not have permission to do that.');
       } else if (err.status >= 500) {
         toast.error('Server error. Please try again later.');

@@ -1,14 +1,14 @@
 <app-page-header title="Assignments" subtitle="Submit your work before the due date" />
 
-@if (loading) {
+@if (loading()) {
   <div class="flex items-center justify-center py-20">
     <mat-spinner diameter="40" />
   </div>
-} @else if (assignments.length === 0) {
+} @else if (assignments().length === 0) {
   <app-empty-state icon="assignment" title="No assignments yet" message="Your instructors haven't posted any assignments." />
 } @else {
   <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-    @for (a of assignments; track a.id) {
+    @for (a of assignments(); track a.id) {
       <mat-card class="!rounded-xl">
         <mat-card-header>
           <mat-card-title class="!text-base">{{ a.title }}</mat-card-title>
@@ -29,7 +29,7 @@
                 class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-blue-600 px-4 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-50"
               >
                 <mat-icon fontIcon="upload_file" />
-                {{ submittingId === a.id ? 'Uploading…' : 'Submit your work' }}
+                {{ submittingId() === a.id ? 'Uploading…' : 'Submit your work' }}
                 <input type="file" class="hidden" (change)="onFileSelected(a, $event)" />
               </label>
             } @else {

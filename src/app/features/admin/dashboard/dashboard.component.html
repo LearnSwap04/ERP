@@ -1,10 +1,10 @@
 <app-page-header title="Admin Dashboard" subtitle="System overview and quick stats" />
 
-@if (loading) {
+@if (loading()) {
   <div class="flex items-center justify-center py-20">
     <mat-spinner diameter="40" />
   </div>
-} @else if (data) {
+} @else if (data(); as data) {
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
     <app-stat-card label="Total users" [value]="data.counts.users" icon="group" tone="primary" />
     <app-stat-card label="Students" [value]="data.counts.students" icon="person" tone="primary" />

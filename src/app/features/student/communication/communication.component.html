@@ -21,8 +21,8 @@
             <mat-error>Please describe the issue</mat-error>
           }
         </mat-form-field>
-        <button mat-raised-button color="primary" type="submit" [disabled]="ticketForm.invalid || submittingTicket">
-          {{ submittingTicket ? 'Submitting…' : 'Submit ticket' }}
+        <button mat-raised-button color="primary" type="submit" [disabled]="ticketForm.invalid || submittingTicket()">
+          {{ submittingTicket() ? 'Submitting…' : 'Submit ticket' }}
         </button>
       </form>
     </mat-card-content>
@@ -33,15 +33,15 @@
       <mat-card-title class="!text-base">My tickets</mat-card-title>
     </mat-card-header>
     <mat-card-content>
-      @if (loading) {
+      @if (loading()) {
         <div class="flex items-center justify-center py-16">
           <mat-spinner diameter="36" />
         </div>
-      } @else if (tickets.length === 0) {
+      } @else if (tickets().length === 0) {
         <app-empty-state icon="support_agent" title="No queries yet" message="Tickets you raise will appear here." />
       } @else {
         <mat-accordion multi displayMode="flat">
-          @for (t of tickets; track t.id) {
+          @for (t of tickets(); track t.id) {
             <mat-expansion-panel>
               <mat-expansion-panel-header>
                 <mat-panel-title class="!text-sm !font-medium">{{ t.subject }}</mat-panel-title>

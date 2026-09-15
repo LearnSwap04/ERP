@@ -46,12 +46,12 @@ export class PostAssignmentComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
 
-  subjects: Subject[] = [];
-  assignments: Assignment[] = [];
-  loading = true;
-  creating = false;
+  readonly subjects = signal<Subject[]>([]);
+  readonly assignments = signal<Assignment[]>([]);
+  readonly loading = signal(true);
+  readonly creating = signal(false);
 
-  selectedFile: File | null = null;
+  readonly selectedFile = signal<File | null>(null);
 
   readonly form = this.fb.group({
     subjectId: this.fb.nonNullable.control('', [Validators.required]),
@@ -64,16 +64,16 @@ export class PostAssignmentComponent implements OnInit {
 
   ngOnInit(): void {
     this.api.get<Subject[]>('/academics/subjects').subscribe({
-      next: (d) => (this.subjects = d),
+      next: (d) => this.subjects.set(d),
       error: () => void 0,
     });
     this.api.get<Assignment[]>('/assignments').subscribe({
       next: (d) => {
-        this.assignments = d;
-        this.loading = false;
+        this.assignments.set(d);
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load assignments.');
       },
     });
@@ -81,7 +81,7 @@ export class PostAssignmentComponent implements OnInit {
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    this.selectedFile = input.files?.[0] ?? null;
+    this.selectedFile.set(input.files?.[0] ?? null);
   }
 
   create(): void {
@@ -92,19 +92,19 @@ export class PostAssignmentComponent implements OnInit {
     form.append('title', v.title);
     if (v.description) form.append('description', v.description);
     form.append('dueDate', (v.dueDate instanceof Date ? v.dueDate.toISOString().slice(0, 10) : v.dueDate));
-    if (this.selectedFile) form.append('file', this.selectedFile);
+    if (this.selectedFile()) form.append('file', this.selectedFile()!);
 
-    this.creating = true;
+    this.creating.set(true);
     this.api.postForm('/assignments', form).subscribe({
       next: () => {
-        this.creating = false;
-        this.selectedFile = null;
+        this.creating.set(false);
+        this.selectedFile.set(null);
         this.form.reset({ subjectId: '', title: '', description: '', dueDate: new Date() });
         this.toast.success('Assignment posted.');
         this.ngOnInit();
       },
       error: () => {
-        this.creating = false;
+        this.creating.set(false);
       },
     });
   }

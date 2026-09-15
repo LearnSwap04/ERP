@@ -57,21 +57,19 @@ export class RollCallComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
 
-  subjects: Subject[] = [];
+  readonly subjects = signal<Subject[]>([]);
   selectedSubjectId: string | null = null;
   date = new Date();
-  roster: RollCall | null = null;
-  loadingRoster = false;
-  saving = false;
+  readonly roster = signal<RollCall | null>(null);
+  readonly loadingRoster = signal(false);
+  readonly saving = signal(false);
   state = signal<'idle' | 'loaded'>('idle');
 
   readonly statuses = STATUSES;
 
   ngOnInit(): void {
     this.api.get<Subject[]>('/attendance/classes').subscribe({
-      next: (d) => {
-        this.subjects = d;
-      },
+      next: (d) => this.subjects.set(d),
       error: () => this.toast.error('Could not load your classes.'),
     });
     this.loadRoster();
@@ -86,48 +84,48 @@ export class RollCallComponent implements OnInit {
 
   loadRoster(): void {
     if (!this.selectedSubjectId) {
-      this.roster = null;
+      this.roster.set(null);
       this.state.set('idle');
       return;
     }
-    this.loadingRoster = true;
+    this.loadingRoster.set(true);
     this.state.set('loaded');
     const date = this.toISO(this.date);
     this.api.get<RollCall>(`/attendance/roll?subjectId=${this.selectedSubjectId}&date=${date}`).subscribe({
       next: (d) => {
-        this.roster = d;
-        this.loadingRoster = false;
+        this.roster.set(d);
+        this.loadingRoster.set(false);
       },
       error: () => {
-        this.loadingRoster = false;
+        this.loadingRoster.set(false);
         this.toast.error('Could not load the roll-call.');
       },
     });
   }
 
   setAll(status: Status): void {
-    if (!this.roster) return;
-    this.roster.students = this.roster.students.map((s) => ({ ...s, status }));
+    if (!this.roster()) return;
+    this.roster.update((r) => (r ? { ...r, students: r.students.map((s) => ({ ...s, status })) } : r));
   }
 
   save(): void {
-    if (!this.roster || !this.selectedSubjectId) return;
-    this.saving = true;
-    const records = this.roster.students
+    if (!this.roster() || !this.selectedSubjectId) return;
+    this.saving.set(true);
+    const records = this.roster()!.students
       .filter((s) => s.status !== 'UNMARKED')
       .map((s) => ({ studentId: s.studentId, status: s.status as Status }));
     this.api.post('/attendance/mark', { subjectId: this.selectedSubjectId, date: this.toISO(this.date), records }).subscribe({
       next: () => {
-        this.saving = false;
+        this.saving.set(false);
         this.toast.success(`Recorded attendance for ${records.length} students.`);
       },
       error: () => {
-        this.saving = false;
+        this.saving.set(false);
       },
     });
   }
 
   markedCount(): number {
-    return this.roster?.students.filter((s) => s.status !== 'UNMARKED').length ?? 0;
+    return this.roster()?.students.filter((s) => s.status !== 'UNMARKED').length ?? 0;
   }
 }

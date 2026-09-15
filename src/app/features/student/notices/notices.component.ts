@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -36,8 +36,8 @@ export class NoticesComponent implements OnInit {
   readonly categories: Array<'ALL' | Notice['category']> = ['ALL', 'EXAM', 'EVENT', 'HOLIDAY', 'GENERAL'];
   activeCategory: 'ALL' | Notice['category'] = 'ALL';
 
-  notices: Notice[] = [];
-  loading = true;
+  readonly notices = signal<Notice[]>([]);
+  readonly loading = signal(true);
 
   ngOnInit(): void {
     this.load();
@@ -50,15 +50,15 @@ export class NoticesComponent implements OnInit {
   }
 
   private load(): void {
-    this.loading = true;
+    this.loading.set(true);
     const query = this.activeCategory === 'ALL' ? '' : `?category=${this.activeCategory}`;
     this.api.get<Notice[]>(`/notices${query}`).subscribe({
       next: (d) => {
-        this.notices = d;
-        this.loading = false;
+        this.notices.set(d);
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load notices.');
       },
     });

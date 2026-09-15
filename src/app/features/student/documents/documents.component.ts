@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -44,9 +44,9 @@ export class DocumentsComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly auth = inject(AuthService);
 
-  requests: DocumentRequest[] = [];
-  loading = true;
-  submitting = false;
+  readonly requests = signal<DocumentRequest[]>([]);
+  readonly loading = signal(true);
+  readonly submitting = signal(false);
 
   readonly form = this.fb.group({
     type: this.fb.nonNullable.control<'BONAFIDE' | 'TRANSCRIPT'>('BONAFIDE', [Validators.required]),
@@ -60,11 +60,11 @@ export class DocumentsComponent implements OnInit {
   private load(): void {
     this.api.get<DocumentRequest[]>('/documents/my').subscribe({
       next: (d) => {
-        this.requests = d;
-        this.loading = false;
+        this.requests.set(d);
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load your document requests.');
       },
     });
@@ -72,18 +72,18 @@ export class DocumentsComponent implements OnInit {
 
   submitRequest(): void {
     if (this.form.invalid) return;
-    this.submitting = true;
+    this.submitting.set(true);
     this.api
       .post('/documents/requests', { type: this.form.getRawValue().type, note: this.form.getRawValue().note || undefined })
       .subscribe({
         next: () => {
-          this.submitting = false;
+          this.submitting.set(false);
           this.toast.success('Request submitted. It will be processed by the administration.');
           this.form.reset({ type: 'BONAFIDE', note: '' });
           this.load();
         },
         error: () => {
-          this.submitting = false;
+          this.submitting.set(false);
         },
       });
   }

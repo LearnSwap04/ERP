@@ -44,10 +44,10 @@ export class LibraryComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
 
-  books: Book[] = [];
-  issues: BookIssue[] = [];
-  loading = true;
-  creating = false;
+  readonly books = signal<Book[]>([]);
+  readonly issues = signal<BookIssue[]>([]);
+  readonly loading = signal(true);
+  readonly creating = signal(false);
 
   issueBookId = signal<string | null>(null);
   issueStudent = signal<string>('');
@@ -66,16 +66,16 @@ export class LibraryComponent implements OnInit {
   private loadBooks(): void {
     this.api.get<Book[]>('/library/books').subscribe({
       next: (d) => {
-        this.books = d;
-        this.loading = false;
+        this.books.set(d);
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load the catalogue.');
       },
     });
     this.api.get<BookIssue[]>('/library/issues').subscribe({
-      next: (d) => (this.issues = d),
+      next: (d) => this.issues.set(d),
       error: () => void 0,
     });
   }
@@ -83,7 +83,7 @@ export class LibraryComponent implements OnInit {
   createBook(): void {
     if (this.bookForm.invalid) return;
     const v = this.bookForm.getRawValue();
-    this.creating = true;
+    this.creating.set(true);
     this.api
       .post('/library/books', {
         title: v.title,
@@ -93,13 +93,13 @@ export class LibraryComponent implements OnInit {
       })
       .subscribe({
         next: () => {
-          this.creating = false;
+          this.creating.set(false);
           this.bookForm.reset({ title: '', author: '', isbn: '', totalCopies: 1 });
           this.toast.success('Book added to catalogue.');
           this.loadBooks();
         },
         error: () => {
-          this.creating = false;
+          this.creating.set(false);
         },
       });
   }

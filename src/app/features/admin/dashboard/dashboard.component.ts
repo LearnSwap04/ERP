@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -21,17 +21,17 @@ export class AdminDashboardComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
 
-  data: AdminDashboard | null = null;
-  loading = true;
+  readonly data = signal<AdminDashboard | null>(null);
+  readonly loading = signal(true);
 
   ngOnInit(): void {
     this.api.get<AdminDashboard>('/dashboard/summary').subscribe({
       next: (d) => {
-        this.data = d;
-        this.loading = false;
+        this.data.set(d);
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load dashboard.');
       },
     });

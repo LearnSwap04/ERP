@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -47,14 +47,14 @@ export class MarksComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
 
-  exams: Exam[] = [];
-  subjects: Subject[] = [];
-  loading = true;
+  readonly exams = signal<Exam[]>([]);
+  readonly subjects = signal<Subject[]>([]);
+  readonly loading = signal(true);
 
   selectedExam: Exam | null = null;
-  roster: ExamRosterStudent[] = [];
-  rosterLoading = false;
-  saving = false;
+  readonly roster = signal<ExamRosterStudent[]>([]);
+  readonly rosterLoading = signal(false);
+  readonly saving = signal(false);
 
   readonly examForm = this.fb.group({
     subjectId: this.fb.nonNullable.control('', [Validators.required]),
@@ -67,7 +67,7 @@ export class MarksComponent implements OnInit {
   ngOnInit(): void {
     this.loadExams();
     this.api.get<Subject[]>('/academics/subjects').subscribe({
-      next: (d) => (this.subjects = d),
+      next: (d) => this.subjects.set(d),
       error: () => void 0,
     });
   }
@@ -75,11 +75,11 @@ export class MarksComponent implements OnInit {
   private loadExams(): void {
     this.api.get<Exam[]>('/grades/exams').subscribe({
       next: (d) => {
-        this.exams = d;
-        this.loading = false;
+        this.exams.set(d);
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load exams.');
       },
     });
@@ -87,18 +87,18 @@ export class MarksComponent implements OnInit {
 
   selectExam(exam: Exam): void {
     this.selectedExam = exam;
-    this.rosterLoading = true;
+    this.rosterLoading.set(true);
     this.fetchRoster(exam.id);
   }
 
   private fetchRoster(examId: string): void {
     this.api.get<{ exam: Exam; students: ExamRosterStudent[] }>(`/grades/exams/${examId}/students`).subscribe({
       next: (d) => {
-        this.roster = d.students;
-        this.rosterLoading = false;
+        this.roster.set(d.students);
+        this.rosterLoading.set(false);
       },
       error: () => {
-        this.rosterLoading = false;
+        this.rosterLoading.set(false);
         this.toast.error('Could not load the class roster.');
       },
     });
@@ -106,7 +106,7 @@ export class MarksComponent implements OnInit {
 
   saveMarks(): void {
     if (!this.selectedExam) return;
-    const entries = this.roster
+    const entries = this.roster()
       .map((s) => {
         const n = Number(s.obtained);
         return { studentId: s.studentId, obtained: Number.isFinite(n) ? n : null };
@@ -116,15 +116,15 @@ export class MarksComponent implements OnInit {
       this.toast.info('Enter marks for at least one student first.');
       return;
     }
-    this.saving = true;
+    this.saving.set(true);
     this.api.post(`/grades/exams/${this.selectedExam.id}/marks`, { entries }).subscribe({
       next: () => {
-        this.saving = false;
+        this.saving.set(false);
         this.toast.success(`Saved marks for ${entries.length} students.`);
         this.fetchRoster(this.selectedExam!.id);
       },
       error: () => {
-        this.saving = false;
+        this.saving.set(false);
       },
     });
   }
@@ -132,7 +132,7 @@ export class MarksComponent implements OnInit {
   createExam(): void {
     if (this.examForm.invalid) return;
     const v = this.examForm.getRawValue();
-    const subject = this.subjects.find((s) => s.id === v.subjectId);
+    const subject = this.subjects().find((s) => s.id === v.subjectId);
     if (!subject) return;
     const date = v.date instanceof Date ? v.date.toISOString().slice(0, 10) : v.date;
     this.api
@@ -157,6 +157,6 @@ export class MarksComponent implements OnInit {
   }
 
   examCount(): number {
-    return this.exams.length;
+    return this.exams().length;
   }
 }

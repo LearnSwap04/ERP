@@ -1,10 +1,10 @@
 <app-page-header title="My Fees" subtitle="Fee ledger for the current semester" />
 
-@if (loading) {
+@if (loading()) {
   <div class="flex items-center justify-center py-20">
     <mat-spinner diameter="40" />
   </div>
-} @else if (ledger.length === 0) {
+} @else if (ledger().length === 0) {
   <app-empty-state
     icon="payments"
     title="No fee items"
@@ -24,7 +24,7 @@
     </mat-card-header>
     <mat-card-content>
       <div class="overflow-x-auto">
-        <table mat-table [dataSource]="ledger" class="w-full">
+        <table mat-table [dataSource]="ledger()" class="w-full">
           <ng-container matColumnDef="title">
             <th mat-header-cell *matHeaderCellDef>Item</th>
             <td mat-cell *matCellDef="let row">
@@ -50,8 +50,8 @@
             <th mat-header-cell *matHeaderCellDef>Actions</th>
             <td mat-cell *matCellDef="let row">
               @if (row.status !== 'PAID') {
-                <button mat-stroked-button color="primary" (click)="pay(row)" [disabled]="payingId === row.item.id">
-                  {{ payingId === row.item.id ? 'Recording…' : 'Pay now' }}
+                <button mat-stroked-button color="primary" (click)="pay(row)" [disabled]="payingId() === row.item.id">
+                  {{ payingId() === row.item.id ? 'Recording…' : 'Pay now' }}
                 </button>
               } @else if (row.payment?.receiptUrl) {
                 <a mat-button color="primary" (click)="downloadReceipt(row.payment!.id)">Download receipt</a>

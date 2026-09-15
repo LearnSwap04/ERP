@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -44,10 +44,9 @@ export class CommunicationComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly auth = inject(AuthService);
 
-  tickets: Ticket[] = [];
-  loading = true;
-  submittingTicket = false;
-  replyTicketId: string | null = null;
+  readonly tickets = signal<Ticket[]>([]);
+  readonly loading = signal(true);
+  readonly submittingTicket = signal(false);
 
   readonly ticketForm = this.fb.group({
     subject: this.fb.nonNullable.control('', [Validators.required]),
@@ -65,11 +64,11 @@ export class CommunicationComponent implements OnInit {
   private load(): void {
     this.api.get<Ticket[]>('/communication/tickets').subscribe({
       next: (d) => {
-        this.tickets = d;
-        this.loading = false;
+        this.tickets.set(d);
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.toast.error('Could not load your queries.');
       },
     });
@@ -77,16 +76,16 @@ export class CommunicationComponent implements OnInit {
 
   createTicket(): void {
     if (this.ticketForm.invalid) return;
-    this.submittingTicket = true;
+    this.submittingTicket.set(true);
     this.api.post('/communication/tickets', this.ticketForm.getRawValue()).subscribe({
       next: () => {
-        this.submittingTicket = false;
+        this.submittingTicket.set(false);
         this.ticketForm.reset();
         this.toast.success('Query submitted.');
         this.load();
       },
       error: () => {
-        this.submittingTicket = false;
+        this.submittingTicket.set(false);
       },
     });
   }

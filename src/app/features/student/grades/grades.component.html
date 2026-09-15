@@ -3,11 +3,11 @@
   subtitle="Semester grade card with SGPA trend and cumulative GPA"
 />
 
-@if (loading) {
+@if (loading()) {
   <div class="flex items-center justify-center py-20">
     <mat-spinner diameter="40" />
   </div>
-} @else if (gradeCard) {
+} @else if (gradeCard(); as gradeCard) {
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
     <app-stat-card label="Current SGPA" [value]="gradeCard.currentSgpa" icon="grade" tone="accent" />
     <app-stat-card label="CGPA" [value]="gradeCard.cgpa" icon="auto_graph" tone="primary" />
@@ -65,7 +65,7 @@
       </mat-card-header>
       <mat-card-content>
         <div class="h-56 w-full">
-          <canvas baseChart [data]="trendData" [options]="trendOptions" type="line"> </canvas>
+          <canvas baseChart [data]="trendData()" [options]="trendOptions" type="line"> </canvas>
         </div>
       </mat-card-content>
     </mat-card>

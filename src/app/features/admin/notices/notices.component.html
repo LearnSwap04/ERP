@@ -20,8 +20,8 @@
         </mat-select>
       </mat-form-field>
       <div class="flex items-end gap-2">
-        <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || creating">
-          {{ creating ? 'Saving…' : editingId() ? 'Update' : 'Post' }}
+        <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid || creating()">
+          {{ creating() ? 'Saving…' : editingId() ? 'Update' : 'Post' }}
         </button>
         @if (editingId()) {
           <button mat-stroked-button type="button" (click)="cancelEdit()">Cancel</button>
@@ -35,15 +35,15 @@
   </mat-card-content>
 </mat-card>
 
-@if (loading) {
+@if (loading()) {
   <div class="flex items-center justify-center py-20">
     <mat-spinner diameter="40" />
   </div>
-} @else if (notices.length === 0) {
+} @else if (notices().length === 0) {
   <app-empty-state icon="campaign" title="No notices yet" message="Post your first notice above." />
 } @else {
   <div class="space-y-3">
-    @for (n of notices; track n.id) {
+    @for (n of notices(); track n.id) {
       <mat-card class="!rounded-xl">
         <mat-card-content class="flex items-start gap-4 py-3">
           <div class="min-w-0 flex-1">

@@ -3,11 +3,11 @@
   subtitle="Subject-wise attendance percentage with a bunk calculator"
 />
 
-@if (loading) {
+@if (loading()) {
   <div class="flex items-center justify-center py-20">
     <mat-spinner diameter="40" />
   </div>
-} @else if (my) {
+} @else if (my(); as my) {
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
     <app-stat-card label="Attendance" [value]="my.overall.percentage + '%'" icon="fact_check" tone="primary" />
     <app-stat-card label="Classes attended" [value]="my.overall.present" icon="how_to_reg" tone="success" />
@@ -75,7 +75,7 @@
       </mat-card-header>
       <mat-card-content>
         <div class="h-56 w-full">
-          <canvas baseChart [data]="attendanceData" [options]="attendanceOptions" type="doughnut"> </canvas>
+          <canvas baseChart [data]="attendanceData()" [options]="attendanceOptions" type="doughnut"> </canvas>
         </div>
       </mat-card-content>
     </mat-card>
@@ -84,10 +84,10 @@
   <mat-card class="mt-6 !rounded-xl">
     <mat-card-header>
       <mat-card-title class="!text-base">Bunk calculator</mat-card-title>
-      <mat-card-subtitle>Classes you can skip (at {{ bunk?.threshold ?? 75 }}% threshold) while staying on track</mat-card-subtitle>
+      <mat-card-subtitle>Classes you can skip (at {{ bunk()?.threshold ?? 75 }}% threshold) while staying on track</mat-card-subtitle>
     </mat-card-header>
     <mat-card-content>
-      @if (bunk) {
+      @if (bunk(); as bunk) {
         <div class="overflow-x-auto">
           <table mat-table [dataSource]="bunk.rows" class="w-full">
             <ng-container matColumnDef="subject">
